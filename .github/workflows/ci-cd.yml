@@ -1,0 +1,516 @@
+name: Bank Churn Analysis CI/CD Pipeline
+
+# Trigger the workflow on push and pull requests
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      run_performance_tests:
+        description: 'Run performance tests'
+        required: false
+        default: 'false'
+        type: boolean
+      deploy_to_staging:
+        description: 'Deploy to staging environment'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Environment variables
+env:
+  PYTHON_VERSION: '3.9'
+  NODE_VERSION: '16'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: bank-churn-analysis
+
+# Define jobs
+jobs:
+  # Code quality and linting
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black flake8 mypy isort bandit safety
+        pip install -r requirements.txt
+        
+    - name: Code formatting check (Black)
+      run: |
+        black --check --diff src/ --line-length=100
+        
+    - name: Import sorting check (isort)
+      run: |
+        isort --check-only --diff src/
+        
+    - name: Linting (Flake8)
+      run: |
+        flake8 src/ --max-line-length=100 --ignore=E203,W503 --statistics
+        
+    - name: Type checking (MyPy)
+      run: |
+        mypy src/ --ignore-missing-imports --no-strict-optional
+        
+    - name: Security check (Bandit)
+      run: |
+        bandit -r src/ -f json -o bandit-report.json || true
+        bandit -r src/ --severity-level medium
+        
+    - name: Dependency security check (Safety)
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30
+
+  # Unit and integration tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+        test-type: ['unit', 'integration']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-html pytest-xdist pytest-timeout
+        
+    - name: Create test directories
+      run: |
+        mkdir -p data/raw data/interim data/processed
+        mkdir -p models reports/figures reports/test_results
+        
+    - name: Install development dependencies
+      run: |
+        pip install -r requirements-dev.txt
+    
+    - name: Run ${{ matrix.test-type }} tests with coverage
+      run: |
+        python -m pytest src/tests/ -v --tb=short --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing --maxfail=1 --disable-warnings
+    
+    - name: Upload coverage to artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report-${{ matrix.python-version }}-${{ matrix.test-type }}
+        path: |
+          htmlcov/
+          coverage.xml
+    
+    - name: Check coverage threshold
+      run: |
+        python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); coverage = float(root.attrib['line-rate']) * 100; print(f'Coverage: {coverage:.1f}%'); exit(0 if coverage >= 90 else 1)"
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}-${{ matrix.test-type }}
+        path: |
+          reports/test_results/
+          .coverage
+        retention-days: 30
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.python-version == '3.9'
+      with:
+        file: ./reports/test_results/coverage.xml
+        flags: ${{ matrix.test-type }}
+        name: codecov-${{ matrix.test-type }}
+        fail_ci_if_error: false
+
+  # API tests
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-html httpx
+        
+    - name: Create test environment
+      run: |
+        mkdir -p data/raw data/interim data/processed
+        mkdir -p models reports/test_results
+        
+    - name: Run API tests
+      env:
+        REDIS_URL: redis://localhost:6379
+      run: |
+        python run_tests.py --api --coverage --verbose
+        
+    - name: Upload API test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: api-test-results
+        path: reports/test_results/
+        retention-days: 30
+
+  # Performance tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [test, api-tests]
+    if: github.event.inputs.run_performance_tests == 'true' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark memory-profiler
+        
+    - name: Create test environment
+      run: |
+        mkdir -p data/raw data/interim data/processed
+        mkdir -p models reports/test_results
+        
+    - name: Run performance tests
+      run: |
+        python run_tests.py --performance --verbose
+        
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: reports/test_results/
+        retention-days: 30
+
+  # Build and test Docker image
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, api-tests]
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./deployment
+        file: ./deployment/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Test Docker image
+      run: |
+        # Pull the built image
+        docker pull ${{ steps.meta.outputs.tags }}
+        
+        # Run container for testing
+        docker run -d --name test-container -p 8000:8000 ${{ steps.meta.outputs.tags }}
+        
+        # Wait for container to start
+        sleep 30
+        
+        # Test health endpoint
+        curl -f http://localhost:8000/health || exit 1
+        
+        # Test API documentation
+        curl -f http://localhost:8000/docs || exit 1
+        
+        # Stop test container
+        docker stop test-container
+        docker rm test-container
+
+  # Security scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: docker-build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.docker-build.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: ${{ needs.docker-build.outputs.image-tag }}
+        args: --severity-threshold=high
+      continue-on-error: true
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build, security-scan]
+    if: |
+      (github.ref == 'refs/heads/develop' && github.event_name == 'push') ||
+      github.event.inputs.deploy_to_staging == 'true'
+    environment:
+      name: staging
+      url: https://staging.bank-churn-analysis.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        echo "Image: ${{ needs.docker-build.outputs.image-tag }}"
+        # Add actual deployment commands here
+        # For example, using kubectl, helm, or cloud-specific tools
+        
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests on staging..."
+        # Add smoke test commands here
+        # curl -f https://staging.bank-churn-analysis.com/health
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker-build, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://bank-churn-analysis.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        echo "Image: ${{ needs.docker-build.outputs.image-tag }}"
+        # Add actual deployment commands here
+        
+    - name: Run production smoke tests
+      run: |
+        echo "Running smoke tests on production..."
+        # Add production smoke test commands here
+        
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        text: |
+          Production deployment ${{ job.status }}!
+          Image: ${{ needs.docker-build.outputs.image-tag }}
+          Commit: ${{ github.sha }}
+
+  # Generate and publish documentation
+  documentation:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: [test, api-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install documentation dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx sphinx-rtd-theme myst-parser
+        
+    - name: Generate API documentation
+      run: |
+        # Generate API docs from FastAPI app
+        echo "Generating API documentation..."
+        
+    - name: Build documentation
+      run: |
+        # Build Sphinx documentation if available
+        echo "Building project documentation..."
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-production, deploy-staging]
+    if: always()
+    
+    steps:
+    - name: Delete old artifacts
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          // Keep only the latest 10 artifacts
+          const artifactsToDelete = artifacts.data.artifacts.slice(10);
+          
+          for (const artifact of artifactsToDelete) {
+            await github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id,
+            });
+          }
+
+# Workflow summary
+  summary:
+    name: Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, test, api-tests, docker-build]
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "## 🧪 Bank Churn Analysis CI/CD Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| API Tests | ${{ needs.api-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

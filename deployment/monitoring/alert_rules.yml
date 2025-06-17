@@ -1,0 +1,159 @@
+# Prometheus Alert Rules for Churn Prediction API
+
+groups:
+  - name: churn_api_alerts
+    rules:
+      # API Health Alerts
+      - alert: ChurnAPIDown
+        expr: up{job="churn-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: churn-api
+        annotations:
+          summary: "Churn Prediction API is down"
+          description: "The Churn Prediction API has been down for more than 1 minute."
+
+      - alert: ChurnAPIHighErrorRate
+        expr: rate(churn_prediction_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: churn-api
+        annotations:
+          summary: "High error rate in Churn Prediction API"
+          description: "Error rate is {{ $value }} errors per second over the last 5 minutes."
+
+      # Performance Alerts
+      - alert: ChurnAPIHighLatency
+        expr: histogram_quantile(0.95, rate(churn_prediction_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          service: churn-api
+        annotations:
+          summary: "High latency in Churn Prediction API"
+          description: "95th percentile latency is {{ $value }} seconds over the last 5 minutes."
+
+      - alert: ChurnAPIVeryHighLatency
+        expr: histogram_quantile(0.95, rate(churn_prediction_duration_seconds_bucket[5m])) > 5
+        for: 1m
+        labels:
+          severity: critical
+          service: churn-api
+        annotations:
+          summary: "Very high latency in Churn Prediction API"
+          description: "95th percentile latency is {{ $value }} seconds over the last 5 minutes."
+
+      # Traffic Alerts
+      - alert: ChurnAPILowTraffic
+        expr: rate(churn_predictions_total[10m]) < 0.01
+        for: 10m
+        labels:
+          severity: info
+          service: churn-api
+        annotations:
+          summary: "Low traffic to Churn Prediction API"
+          description: "Prediction rate is {{ $value }} predictions per second over the last 10 minutes."
+
+      - alert: ChurnAPIHighTraffic
+        expr: rate(churn_predictions_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: churn-api
+        annotations:
+          summary: "High traffic to Churn Prediction API"
+          description: "Prediction rate is {{ $value }} predictions per second over the last 5 minutes."
+
+  - name: system_alerts
+    rules:
+      # System Resource Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for more than 5 minutes on {{ $labels.instance }}."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% for more than 5 minutes on {{ $labels.instance }}."
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Low disk space detected"
+          description: "Disk usage is above 90% on {{ $labels.instance }} for filesystem {{ $labels.mountpoint }}."
+
+  - name: model_performance_alerts
+    rules:
+      # Model Performance Monitoring
+      - alert: ModelPredictionDrift
+        expr: abs(rate(churn_predictions_total[1h]) - rate(churn_predictions_total[24h] offset 24h)) > 0.5
+        for: 30m
+        labels:
+          severity: warning
+          service: model
+        annotations:
+          summary: "Potential model prediction drift detected"
+          description: "Significant change in prediction patterns compared to the same time yesterday."
+
+      # Data Quality Alerts
+      - alert: UnusualPredictionDistribution
+        expr: |
+          (
+            sum(rate(churn_predictions_total{prediction="true"}[1h])) / 
+            sum(rate(churn_predictions_total[1h]))
+          ) > 0.8 or
+          (
+            sum(rate(churn_predictions_total{prediction="true"}[1h])) / 
+            sum(rate(churn_predictions_total[1h]))
+          ) < 0.1
+        for: 30m
+        labels:
+          severity: warning
+          service: model
+        annotations:
+          summary: "Unusual prediction distribution detected"
+          description: "Churn prediction rate is outside normal range (10%-80%)."
+
+  - name: business_alerts
+    rules:
+      # Business Logic Alerts
+      - alert: HighChurnPredictionRate
+        expr: |
+          (
+            sum(rate(churn_predictions_total{prediction="true"}[1h])) / 
+            sum(rate(churn_predictions_total[1h]))
+          ) > 0.6
+        for: 1h
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "High churn prediction rate detected"
+          description: "More than 60% of customers are predicted to churn in the last hour."
+
+      - alert: ModelNotUsed
+        expr: increase(churn_predictions_total[24h]) == 0
+        for: 1h
+        labels:
+          severity: info
+          service: business
+        annotations:
+          summary: "No predictions made in the last 24 hours"
+          description: "The churn prediction model has not been used for predictions in the last 24 hours."

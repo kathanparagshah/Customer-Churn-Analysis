@@ -1,0 +1,66 @@
+# Development and Testing Dependencies
+
+# Testing Framework
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-xdist==3.5.0
+pytest-mock==3.12.0
+pytest-asyncio==0.21.1
+
+# Code Quality
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.7.1
+bandit==1.7.5
+safety==2.3.5
+
+# Testing Utilities
+requests==2.31.0
+requests-mock==1.11.0
+httpx==0.25.2
+factory-boy==3.3.0
+faker==20.1.0
+
+# API Testing
+fastapi==0.104.1
+uvicorn==0.24.0
+starlette==0.27.0
+
+# Mocking and Test Doubles
+responses==0.24.1
+
+# Performance Testing
+locust==2.17.0
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==1.3.0
+
+# Jupyter for Test Development
+jupyter==1.0.0
+ipython==8.17.2
+
+# Database Testing
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Linting and Formatting
+pre-commit==3.6.0
+autoflake==2.2.1
+pyupgrade==3.15.0
+
+# Type Checking
+types-requests==2.31.0.10
+types-PyYAML==6.0.12.12
+
+# Coverage Reporting
+coverage==7.3.2
+coverage-badge==1.1.0
+
+# CI/CD Utilities
+tox==4.11.4
+nox==2023.4.22
