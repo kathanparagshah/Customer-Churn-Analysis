@@ -77,39 +77,169 @@ class DataLoader:
         
         self.expected_columns = list(self.expected_schema.keys())
         
-    def download_from_kaggle(self, dataset_name: str = "mathchi/churn-for-bank-customers") -> bool:
+    def download_from_kaggle(self, dataset_name: str = "mashlyn/customer-churn-modeling", 
+                           filename: str = "Churn_Modelling.csv", 
+                           max_retries: int = 3) -> Path:
         """
-        Download dataset from Kaggle using the API.
+        Download dataset from Kaggle using the API with retry logic and credential handling.
         
         Args:
-            dataset_name: Kaggle dataset identifier
+            dataset_name: Kaggle dataset identifier (default: mashlyn/customer-churn-modeling)
+            filename: Expected filename to download (default: Churn_Modelling.csv)
+            max_retries: Maximum number of retry attempts (default: 3)
             
         Returns:
-            bool: Success status
+            Path: Path to the downloaded file (even if download fails, returns expected path)
         """
+        import time
+        import json
+        from pathlib import Path
+        
+        expected_file_path = self.raw_data_dir / filename
+        
+        # If file already exists, return its path
+        if expected_file_path.exists():
+            logger.info(f"File {filename} already exists at {expected_file_path}")
+            return expected_file_path
+        
+        # Setup Kaggle credentials
+        if not self._setup_kaggle_credentials():
+            logger.warning("Failed to setup Kaggle credentials. Returning expected file path.")
+            return expected_file_path
+        
+        # Attempt download with retry logic
+        for attempt in range(max_retries):
+            try:
+                import kaggle
+                
+                logger.info(f"Downloading dataset: {dataset_name} (attempt {attempt + 1}/{max_retries})")
+                
+                # Download to raw data directory
+                kaggle.api.dataset_download_files(
+                    dataset_name, 
+                    path=str(self.raw_data_dir),
+                    unzip=False  # We'll handle unzipping manually
+                )
+                
+                # Check for downloaded files and handle ZIP extraction
+                downloaded_files = list(self.raw_data_dir.glob("*"))
+                zip_files = [f for f in downloaded_files if f.suffix.lower() == '.zip']
+                
+                if zip_files:
+                    logger.info(f"Found ZIP file(s): {[f.name for f in zip_files]}")
+                    for zip_file in zip_files:
+                        self._extract_and_cleanup_zip(zip_file)
+                
+                # Verify the expected file exists
+                if expected_file_path.exists():
+                    logger.info(f"Dataset downloaded successfully: {expected_file_path}")
+                    return expected_file_path
+                else:
+                    # Check if file exists with different name
+                    csv_files = list(self.raw_data_dir.glob("*.csv"))
+                    if csv_files:
+                        actual_file = csv_files[0]
+                        logger.info(f"Found CSV file with different name: {actual_file.name}")
+                        # Rename to expected filename
+                        actual_file.rename(expected_file_path)
+                        logger.info(f"Renamed to: {expected_file_path.name}")
+                        return expected_file_path
+                    else:
+                        raise FileNotFoundError(f"Expected file {filename} not found after download")
+                        
+            except ImportError:
+                logger.error("Kaggle package not installed. Install with: pip install kaggle")
+                break
+            except Exception as e:
+                logger.warning(f"Download attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 2^attempt seconds
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"All {max_retries} download attempts failed")
+        
+        # If all attempts failed, log warning and return expected path
+        logger.warning(f"Failed to download {filename} from Kaggle. Returning expected path for pipeline continuity.")
+        return expected_file_path
+    
+    def _setup_kaggle_credentials(self) -> bool:
+        """
+        Setup Kaggle API credentials from project kaggle.json or environment variables.
+        
+        Returns:
+            bool: True if credentials were successfully configured
+        """
+        import json
+        
+        # Check if credentials are already configured
         try:
             import kaggle
-            
-            logger.info(f"Downloading dataset: {dataset_name}")
-            
-            # Download to raw data directory
-            kaggle.api.dataset_download_files(
-                dataset_name, 
-                path=str(self.raw_data_dir),
-                unzip=True
-            )
-            
-            logger.info("Dataset downloaded successfully")
+            # Try to authenticate - this will raise an exception if not configured
+            kaggle.api.authenticate()
+            logger.info("Kaggle credentials already configured")
             return True
+        except:
+            pass
+        
+        # Method 1: Try to read from project root kaggle.json
+        project_kaggle_json = self.project_root / "kaggle.json"
+        if project_kaggle_json.exists():
+            try:
+                with open(project_kaggle_json, 'r') as f:
+                    creds = json.load(f)
+                
+                # Set environment variables
+                os.environ['KAGGLE_USERNAME'] = creds.get('username', '')
+                os.environ['KAGGLE_KEY'] = creds.get('key', '')
+                
+                logger.info(f"Loaded Kaggle credentials from {project_kaggle_json}")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to read kaggle.json from project root: {e}")
+        
+        # Method 2: Check environment variables
+        kaggle_username = os.environ.get('KAGGLE_USERNAME', 'kathanparagshah')
+        kaggle_key = os.environ.get('KAGGLE_KEY', '')
+        
+        if kaggle_username and kaggle_key:
+            os.environ['KAGGLE_USERNAME'] = kaggle_username
+            os.environ['KAGGLE_KEY'] = kaggle_key
+            logger.info("Using Kaggle credentials from environment variables")
+            return True
+        
+        # Method 3: Try default ~/.kaggle/kaggle.json location
+        home_kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+        if home_kaggle_json.exists():
+            logger.info("Using Kaggle credentials from ~/.kaggle/kaggle.json")
+            return True
+        
+        logger.error("No Kaggle credentials found. Please provide credentials via:")
+        logger.error("1. kaggle.json in project root")
+        logger.error("2. Environment variables KAGGLE_USERNAME and KAGGLE_KEY")
+        logger.error("3. ~/.kaggle/kaggle.json")
+        return False
+    
+    def _extract_and_cleanup_zip(self, zip_path: Path) -> None:
+        """
+        Extract ZIP file and clean up the archive.
+        
+        Args:
+            zip_path: Path to the ZIP file
+        """
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(self.raw_data_dir)
             
-        except ImportError:
-            logger.error("Kaggle package not installed. Install with: pip install kaggle")
-            return False
+            logger.info(f"Extracted ZIP file: {zip_path.name}")
+            
+            # Delete the ZIP file
+            zip_path.unlink()
+            logger.info(f"Cleaned up ZIP file: {zip_path.name}")
+            
         except Exception as e:
-            logger.error(f"Error downloading dataset: {str(e)}")
-            logger.info("Please ensure Kaggle API credentials are configured")
-            logger.info("Place kaggle.json in ~/.kaggle/ directory")
-            return False
+            logger.error(f"Failed to extract ZIP file {zip_path}: {e}")
     
     def load_csv_data(self, filename: str = "Churn_Modelling.csv") -> pd.DataFrame:
         """
@@ -375,8 +505,9 @@ class DataLoader:
             
             # Step 1: Download data (optional)
             if download_data:
-                if not self.download_from_kaggle():
-                    logger.error("Failed to download data from Kaggle")
+                expected_file_path = self.download_from_kaggle()
+                if not expected_file_path.exists():
+                    logger.error("Failed to download data from Kaggle and file does not exist")
                     return False
             
             # Step 2: Load CSV data

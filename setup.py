@@ -19,11 +19,26 @@ long_description = (this_directory / "README.md").read_text(encoding='utf-8')
 
 # Read requirements
 requirements = []
-with open('requirements.txt', 'r', encoding='utf-8') as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith('#'):
-            requirements.append(line)
+try:
+    with open('requirements.txt', 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                requirements.append(line)
+except FileNotFoundError:
+    # Fallback requirements if file not found
+    requirements = [
+        'pandas>=1.3.0',
+        'numpy>=1.21.0',
+        'scikit-learn>=1.0.0',
+        'matplotlib>=3.4.0',
+        'seaborn>=0.11.0',
+        'fastapi>=0.68.0',
+        'uvicorn>=0.15.0',
+        'pydantic>=1.8.0',
+        'shap>=0.40.0',
+        'pytest>=6.2.0'
+    ]
 
 setup(
     name="bank-churn-analysis",

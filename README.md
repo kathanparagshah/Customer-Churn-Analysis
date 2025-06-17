@@ -124,31 +124,54 @@ predictor = ChurnPredictor()
 predictor = ChurnPredictor(project_root=Path('/path/to/your/project'))
 ```
 
-### Optional: Kaggle API Setup
+## Kaggle Credentials Setup
 
-For automated data download:
+This project includes automated data download from Kaggle. For detailed setup instructions, see [KAGGLE_DOWNLOAD_GUIDE.md](KAGGLE_DOWNLOAD_GUIDE.md).
 
-1. **Get Kaggle API credentials**:
+### Quick Setup
+
+1. **Install Kaggle API**:
+```bash
+pip install kaggle
+```
+
+2. **Get API credentials**:
    - Go to Kaggle → Account → API → Create New API Token
    - Download `kaggle.json`
 
-2. **Configure credentials**:
+3. **Configure credentials** (choose one method):
+
+   **Option A: Global setup (recommended)**
+   ```bash
+   mkdir -p ~/.kaggle
+   mv ~/Downloads/kaggle.json ~/.kaggle/
+   chmod 600 ~/.kaggle/kaggle.json
+   ```
+
+   **Option B: Environment variables**
+   ```bash
+   export KAGGLE_USERNAME="your_username"
+   export KAGGLE_KEY="your_api_key"
+   ```
+
+   **Option C: Project-level (for development)**
+   ```bash
+   # Place kaggle.json in project root (already in .gitignore)
+   cp ~/Downloads/kaggle.json ./kaggle.json
+   ```
+
+4. **Test download**:
 ```bash
-# Create kaggle directory
-mkdir -p ~/.kaggle
-
-# Move credentials file
-mv ~/Downloads/kaggle.json ~/.kaggle/
-
-# Set permissions
-chmod 600 ~/.kaggle/kaggle.json
+python3 simple_download_test.py
 ```
 
-3. **Download dataset**:
-```bash
-kaggle datasets download -d mathchi/churn-for-bank-customers
-unzip churn-for-bank-customers.zip -d data/raw/
-```
+### CI/CD Integration
+
+For GitHub Actions, set repository secrets:
+- `KAGGLE_USERNAME`: Your Kaggle username
+- `KAGGLE_KEY`: Your Kaggle API key
+
+The CI workflow will automatically handle credential setup and data download testing.
 
 ## Usage
 
