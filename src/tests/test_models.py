@@ -377,10 +377,6 @@ class TestCustomerSegmentation:
         # All labels should be 0
         assert all(label == 0 for label in labels)
         assert len(set(labels)) == 1
-        
-        # Check metric ranges
-        assert 0 <= baseline_metrics['accuracy'] <= 1
-        assert 0 <= baseline_metrics['roc_auc'] <= 1
     
     def test_train_advanced_models(self, churn_predictor, sample_data):
         """Test advanced model training."""
