@@ -36,7 +36,7 @@ dependencies = [
     "imbalanced-learn==0.11.0",
     "shap==0.44.0",
     "lime==0.2.0.1",
-    "matplotlib==3.8.2",
+    "matplotlib==3.7.5",
     "seaborn==0.13.0",
     "plotly==5.17.0",
     "pyarrow==14.0.2",
