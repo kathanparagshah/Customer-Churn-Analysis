@@ -1,0 +1,61 @@
+# Include the README and other documentation
+include README.md
+include CHANGELOG.md
+include ROADMAP.md
+include LICENSE
+include requirements*.txt
+include pyproject.toml
+include setup.py
+include Makefile
+
+# Include configuration files
+include pytest.ini
+include .gitignore
+
+# Include data dictionary and documentation
+recursive-include data *.md
+
+# Include deployment files
+recursive-include deployment *.py *.yml *.yaml *.dockerfile
+include deployment/Dockerfile
+include deployment/docker-compose.yml
+
+# Include GitHub workflows
+recursive-include .github *.yml *.yaml
+
+# Include notebooks
+recursive-include notebooks *.ipynb
+
+# Include source code
+recursive-include src *.py
+
+# Include test files
+recursive-include src/tests *.py
+
+# Exclude compiled Python files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude *.egg-info
+
+# Exclude development and temporary files
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude .mypy_cache
+global-exclude .tox
+global-exclude .venv
+global-exclude venv
+global-exclude env
+
+# Exclude data files (they should be downloaded)
+exclude data/raw/*
+exclude data/interim/*
+exclude data/processed/*
+
+# Exclude model files and logs
+exclude models/*
+exclude logs/*
+exclude reports/figures/*

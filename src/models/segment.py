@@ -89,12 +89,18 @@ class CustomerSegmentation:
         Returns:
             pd.DataFrame: Preprocessed features
         """
-        # Select numeric features for clustering
+        # Select numeric features for clustering (check both original and scaled versions)
         numeric_features = ['CreditScore', 'Age', 'Tenure', 'Balance', 
                           'NumOfProducts', 'EstimatedSalary']
         
-        # Filter to available columns
-        available_features = [col for col in numeric_features if col in df.columns]
+        # Filter to available columns (prefer scaled versions)
+        available_features = []
+        for feature in numeric_features:
+            scaled_name = f"{feature}_scaled"
+            if scaled_name in df.columns:
+                available_features.append(scaled_name)
+            elif feature in df.columns:
+                available_features.append(feature)
         
         if not available_features:
             raise ValueError("No numeric features available for clustering")
@@ -103,14 +109,20 @@ class CustomerSegmentation:
         X = df[available_features].copy()
         X = X.fillna(X.median())
         
-        # Scale features
-        X_scaled = pd.DataFrame(
-            self.scaler.fit_transform(X),
-            columns=available_features,
-            index=X.index
-        )
-        
-        return X_scaled
+        # If features are already scaled (have '_scaled' suffix), use them directly
+        # Otherwise, scale them
+        if any('_scaled' in col for col in available_features):
+            print("Using pre-scaled features for clustering")
+            return X
+        else:
+            print("Scaling features for clustering")
+            # Scale features
+            X_scaled = pd.DataFrame(
+                self.scaler.fit_transform(X),
+                columns=available_features,
+                index=X.index
+            )
+            return X_scaled
     
     def load_data(self, file_path: Optional[str] = None) -> pd.DataFrame:
         """
@@ -123,7 +135,7 @@ class CustomerSegmentation:
             pd.DataFrame: Loaded customer data
         """
         if file_path is None:
-            # Try processed data first, then interim
+            # Try processed data first, then interim as fallback
             processed_path = self.data_dir / 'processed' / 'churn_cleaned.parquet'
             interim_path = self.data_dir / 'interim' / 'churn_raw.parquet'
             
@@ -151,7 +163,7 @@ class CustomerSegmentation:
         Returns:
             pd.DataFrame: Selected features for clustering
         """
-        # Primary clustering features
+        # Primary clustering features (check both original and scaled versions)
         clustering_features = [
             'CreditScore', 'Age', 'Tenure', 'Balance', 
             'NumOfProducts', 'EstimatedSalary'
@@ -160,8 +172,15 @@ class CustomerSegmentation:
         # Additional features if available
         optional_features = ['HasCrCard', 'IsActiveMember']
         
-        # Select available features
-        available_features = [col for col in clustering_features if col in df.columns]
+        # Select available features (prefer scaled versions if available)
+        available_features = []
+        for feature in clustering_features:
+            scaled_name = f"{feature}_scaled"
+            if scaled_name in df.columns:
+                available_features.append(scaled_name)
+            elif feature in df.columns:
+                available_features.append(feature)
+        
         available_optional = [col for col in optional_features if col in df.columns]
         
         selected_features = available_features + available_optional

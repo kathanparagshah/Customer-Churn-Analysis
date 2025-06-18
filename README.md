@@ -64,14 +64,42 @@ See `requirements.txt` for complete dependency list with versions.
 
 ## Installation
 
-### Prerequisites
+### Option 1: Install from PyPI (Recommended)
+
+```bash
+# Install the latest stable version
+pip install bank-churn-analysis
+
+# Install with development dependencies
+pip install bank-churn-analysis[dev]
+
+# Install with all optional dependencies
+pip install bank-churn-analysis[dev,docs]
+```
+
+After installation, you'll have access to command-line tools:
+```bash
+churn-predict    # Train churn prediction models
+churn-segment    # Perform customer segmentation
+churn-explain    # Generate model explanations
+```
+
+### Option 2: Install from TestPyPI (Pre-release)
+
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ bank-churn-analysis
+```
+
+### Option 3: Development Installation
+
+#### Prerequisites
 
 - **Python 3.8+**: Ensure you have a compatible Python version
 - **Git**: For cloning the repository
 - **Kaggle API credentials** (optional): For automated data download
 - **Docker** (optional): For containerized deployment
 
-### Quick Start
+#### Quick Start
 
 1. **Clone the repository**:
 ```bash
@@ -95,6 +123,9 @@ venv\Scripts\activate
 ```bash
 # Install in development mode
 pip install -e .
+
+# Or install with development dependencies
+pip install -e .[dev]
 
 # Or install dependencies only
 pip install -r requirements.txt

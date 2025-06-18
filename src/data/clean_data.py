@@ -677,29 +677,31 @@ class DataCleaner:
             df_processed, X_processed = self.apply_preprocessing(df, fit_preprocessor=True)
             
             # Step 7: Validate processed data
-            validation = self.validate_processed_data(df_processed)
+            is_valid, validation_issues = self.validate_processed_data(df_processed)
             
             # Save validation report
+            validation_report = {
+                'is_valid': is_valid,
+                'issues': validation_issues
+            }
             with open(self.processed_data_dir / 'processing_validation.json', 'w') as f:
-                json.dump(validation, f, indent=2)
+                json.dump(validation_report, f, indent=2)
             
-            if not validation['is_valid']:
-                logger.error("Data validation failed after processing")
-                return False
+            if not is_valid:
+                logger.error(f"Data validation failed after processing: {validation_issues}")
+                return None
             
             # Step 8: Save processed data
-            if not self.save_processed_data(df_processed):
-                logger.error("Failed to save processed data")
-                return False
+            self.save_processed_data(df_processed, "churn_cleaned.parquet")
             
             logger.info("Data cleaning pipeline completed successfully")
             logger.info(f"Final dataset shape: {df_processed.shape}")
             
-            return True
+            return df_processed
             
         except Exception as e:
             logger.error(f"Data cleaning pipeline failed: {str(e)}")
-            return False
+            return None
 
 def main():
     """

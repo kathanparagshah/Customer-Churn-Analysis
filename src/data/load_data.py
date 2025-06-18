@@ -374,8 +374,8 @@ class DataLoader:
         if expected == actual:
             return True
         
-        # Integer compatibility
-        if expected == 'int64' and actual in ['int32', 'int64', 'Int64']:
+        # Integer compatibility (allow float64 for int64 due to missing values)
+        if expected == 'int64' and actual in ['int32', 'int64', 'Int64', 'float64']:
             return True
         
         # Float compatibility
@@ -463,6 +463,42 @@ class DataLoader:
         
         logger.info(f"Sanity checks completed. Warnings: {len(checks['warnings'])}, Errors: {len(checks['errors'])}")
         return is_valid, issues
+    
+    def validate_data(self, df: pd.DataFrame) -> bool:
+        """
+        Validate data using schema and sanity checks, then save interim data.
+        
+        Args:
+            df: Input dataframe to validate
+            
+        Returns:
+            bool: True if validation passes and data is saved
+        """
+        try:
+            logger.info("Starting data validation")
+            
+            # Step 1: Schema validation
+            is_schema_valid, schema_issues = self.validate_schema(df)
+            if not is_schema_valid:
+                logger.error(f"Schema validation failed: {schema_issues}")
+                return False
+            
+            # Step 2: Sanity checks
+            is_sanity_valid, sanity_issues = self.perform_sanity_checks(df)
+            if not is_sanity_valid:
+                logger.error(f"Sanity checks failed: {sanity_issues}")
+                return False
+            
+            logger.info("Data validation passed")
+            
+            # Step 3: Save interim data after successful validation
+            self.save_interim_data(df, "churn_raw.parquet")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Data validation failed: {str(e)}")
+            return False
     
     def save_interim_data(self, df: pd.DataFrame, filename: str = "churn_interim.parquet") -> Path:
         """
