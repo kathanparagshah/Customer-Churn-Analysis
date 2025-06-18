@@ -99,7 +99,6 @@ hyperopt==0.2.7
 
 # Data Profiling
 pandas-profiling==3.2.0
-ydata-profiling==4.6.4
 
 # Database Connectivity (if needed)
 sqlalchemy==2.0.23
