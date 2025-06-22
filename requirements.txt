@@ -39,7 +39,7 @@ kaggle==1.5.16
 opendatasets==0.1.22
 
 # Model Serialization & Versioning
-joblib==1.1.1
+joblib>=1.1.0,<1.4.0
 pickle-mixin==1.0.2
 mlflow==2.8.1
 
@@ -98,7 +98,7 @@ optuna==3.4.0
 hyperopt==0.2.7
 
 # Data Profiling
-pandas-profiling==3.2.0
+ydata-profiling>=4.0.0,<5.0.0
 
 # Database Connectivity (if needed)
 sqlalchemy==2.0.23
