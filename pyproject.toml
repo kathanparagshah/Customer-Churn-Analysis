@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bank-churn-analysis"
-version = "0.2.0"
+version = "0.2.6"
 authors = [
     {name = "Bank Churn Analysis Team", email = "team@bankchurn.com"},
 ]

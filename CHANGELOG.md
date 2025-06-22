@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2024-12-19
+
+### Changed
+- Replaced deprecated `pandas-profiling` with modern `ydata-profiling>=4.0.0,<5.0.0`
+- Loosened `joblib` version pin from `==1.1.1` to `>=1.1.0,<1.4.0` for better compatibility
+- Downgraded `pre-commit` to `3.5.5` for Python 3.8 compatibility
+- Updated CI workflow to use minimal test dependencies for faster builds
+
 ## [0.2.0] - 2024-12-19
 
 ### Added
