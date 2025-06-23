@@ -174,9 +174,12 @@ class ModelManager:
         self.model_path = Path('../models/churn_model.pkl')
         self.start_time = datetime.now()
     
-    def load_model(self) -> bool:
+    def load_model(self, model_path: str) -> bool:
         """
         Load the trained model and preprocessing components.
+        
+        Args:
+            model_path: Path to the model file
         
         Returns:
             bool: True if model loaded successfully, False otherwise
@@ -184,14 +187,15 @@ class ModelManager:
         global model, scaler, label_encoders, feature_names, model_metadata, model_loaded
         
         try:
-            if not self.model_path.exists():
-                logger.error(f"Model file not found: {self.model_path}")
+            model_file_path = Path(model_path)
+            if not model_file_path.exists():
+                logger.error(f"Model file not found: {model_file_path}")
                 return False
             
-            logger.info(f"Loading model from {self.model_path}")
+            logger.info(f"Loading model from {model_file_path}")
             
             # Load model package
-            model_package = joblib.load(self.model_path)
+            model_package = joblib.load(model_file_path)
             
             model = model_package['model']
             scaler = model_package.get('scaler')

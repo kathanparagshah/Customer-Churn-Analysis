@@ -135,11 +135,15 @@ class CustomerSegmentation:
             pd.DataFrame: Loaded customer data
         """
         if file_path is None:
-            # Try processed data first, then interim as fallback
+            # Try processed data in order: features -> cleaned -> raw
+            features_path = self.data_dir / 'processed' / 'churn_features.parquet'
             processed_path = self.data_dir / 'processed' / 'churn_cleaned.parquet'
             interim_path = self.data_dir / 'interim' / 'churn_raw.parquet'
             
-            if processed_path.exists():
+            if features_path.exists():
+                file_path = features_path
+                print(f"✅ Loading engineered features from {file_path}")
+            elif processed_path.exists():
                 file_path = processed_path
                 print(f"✅ Loading processed data from {file_path}")
             elif interim_path.exists():

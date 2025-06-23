@@ -843,6 +843,12 @@ class FeatureEngineer:
             # Step 5: Create statistical features
             df_features = self.create_statistical_features(df_features)
             
+            # Cast float16 columns to float32 before saving
+            float16_cols = df_features.select_dtypes(include=['float16']).columns
+            if len(float16_cols) > 0:
+                df_features[float16_cols] = df_features[float16_cols].astype('float32')
+                logger.info(f"Cast {len(float16_cols)} float16 columns to float32")
+            
             # Step 6: Calculate feature importance
             self.calculate_feature_importance(df_features)
             

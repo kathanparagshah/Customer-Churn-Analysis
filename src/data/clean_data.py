@@ -309,7 +309,7 @@ class DataCleaner:
         logger.info(f"Outlier detection completed. {outlier_analysis['total_outlier_rows']} rows with outliers")
         return outlier_analysis
     
-    def create_preprocessing_pipeline(self, df: pd.DataFrame) -> ColumnTransformer:
+    def create_preprocessing_pipeline(self, df: pd.DataFrame) -> tuple:
         """
         Create preprocessing pipeline for features.
         
@@ -317,7 +317,7 @@ class DataCleaner:
             df: Input dataframe for fitting
             
         Returns:
-            ColumnTransformer: Fitted preprocessing pipeline
+            tuple: (ColumnTransformer, processed_data) - Fitted preprocessing pipeline and processed data
         """
         # Define transformers for different feature types
         numeric_transformer = Pipeline(steps=[
@@ -361,7 +361,10 @@ class DataCleaner:
         logger.info(f"Categorical features: {available_categorical}")
         logger.info(f"Binary features: {available_binary}")
         
-        return preprocessor
+        # Fit the pipeline and transform the data
+        processed_data = preprocessor.fit_transform(df)
+        
+        return preprocessor, processed_data
     
     def remove_unnecessary_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
