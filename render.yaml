@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: churn-api
+    env: docker
+    repo: https://github.com/kathanparagshah/Customer-Churn-Analysis.git
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONPATH
+        value: /app
+      - key: LOG_LEVEL
+        value: INFO
+    # Auto-deploy on pushes to main branch
+    autoDeploy: true
+    # Custom domain (optional)
+    # domains:
+    #   - api.customer-churn-demo.com

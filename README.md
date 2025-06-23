@@ -1,16 +1,23 @@
 # Bank Customer Churn Analysis
 
-A comprehensive machine learning project for predicting customer churn in banking, featuring automated data pipelines, model explainability, and deployment-ready APIs.
+A comprehensive machine learning project for predicting customer churn in banking, featuring automated data pipelines, model explainability, and full-stack deployment.
+
+## 🚀 Live Demo
+
+- **Frontend**: [https://customer-churn-analysis-kgz3.vercel.app](https://customer-churn-analysis-kgz3.vercel.app)
+- **API**: [https://api.customer-churn-demo.com](https://api.customer-churn-demo.com)
+- **API Documentation**: [https://api.customer-churn-demo.com/docs](https://api.customer-churn-demo.com/docs)
 
 ## Project Overview
 
-This project implements an end-to-end machine learning solution to predict customer churn for a bank. It includes data acquisition, preprocessing, exploratory data analysis, customer segmentation, predictive modeling, and deployment capabilities.
+This project implements an end-to-end machine learning solution to predict customer churn for a bank. It includes data acquisition, preprocessing, exploratory data analysis, customer segmentation, predictive modeling, and full production deployment.
 
 The solution addresses real-world challenges in customer retention by providing:
 - **Predictive Analytics**: Identify customers at risk of churning
 - **Customer Segmentation**: Understand different customer behaviors
 - **Actionable Insights**: Data-driven recommendations for retention strategies
-- **Production-Ready**: Scalable API for real-time predictions
+- **Production-Ready**: Full-stack deployment with React frontend and FastAPI backend
+- **CI/CD Pipeline**: Automated testing and deployment
 
 ## Features
 
@@ -397,7 +404,160 @@ curl -X POST "http://localhost:8000/predict" \
        "is_active_member": 1,
        "estimated_salary": 112542.58
      }'
-```
+```}'
+
+## 🚀 Deployment Guide
+
+### Backend Deployment (FastAPI)
+
+#### Local Development
+
+1. **Using Docker Compose (Recommended)**:
+   ```bash
+   # Build and run the entire stack
+   docker-compose up --build
+   
+   # API will be available at http://localhost:8000
+   # API docs at http://localhost:8000/docs
+   ```
+
+2. **Manual Setup**:
+   ```bash
+   # Install dependencies
+   pip install -r requirements.txt
+   
+   # Run the API server
+   uvicorn deployment.app:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+#### Production Deployment
+
+1. **Build Docker Image**:
+   ```bash
+   docker build -t churn-api .
+   docker tag churn-api ghcr.io/yourusername/customer-churn-analysis/churn-api:latest
+   docker push ghcr.io/yourusername/customer-churn-analysis/churn-api:latest
+   ```
+
+2. **Deploy to Render.com**:
+   - Connect your GitHub repository to Render
+   - Create a new Web Service
+   - Set build command: `docker build -t churn-api .`
+   - Set start command: `uvicorn deployment.app:app --host 0.0.0.0 --port $PORT`
+   - Configure environment variables as needed
+
+3. **Deploy to Heroku**:
+   ```bash
+   # Install Heroku CLI and login
+   heroku create your-app-name
+   heroku container:push web
+   heroku container:release web
+   ```
+
+#### CORS Configuration
+
+The FastAPI backend is configured with CORS middleware to allow requests from:
+- `https://customer-churn-analysis-kgz3.vercel.app` (production frontend)
+- `http://localhost:3000` (local development)
+- `http://127.0.0.1:3000` (alternative local)
+
+**Why CORS is needed**: Cross-Origin Resource Sharing (CORS) is a security feature implemented by web browsers that blocks requests from one domain to another unless explicitly allowed. Since our frontend (Vercel) and backend (Render/Heroku) are on different domains, we need to configure CORS to allow the frontend to make API calls to the backend.
+
+### Frontend Deployment (React + Vite)
+
+#### Local Development
+
+1. **Setup Environment**:
+   ```bash
+   cd frontend
+   cp .env.example .env.local
+   # Edit .env.local to set VITE_API_BASE_URL=http://localhost:8000
+   ```
+
+2. **Install and Run**:
+   ```bash
+   npm install
+   npm run dev
+   # Or use the convenience script:
+   npm run dev:local
+   ```
+
+#### Production Deployment to Vercel
+
+1. **Manual Deployment**:
+   ```bash
+   cd frontend
+   npm install -g vercel
+   vercel login
+   vercel --prod
+   ```
+
+2. **Environment Variables in Vercel**:
+   - Go to your Vercel project dashboard
+   - Navigate to Settings → Environment Variables
+   - Add: `VITE_API_BASE_URL` = `https://api.customer-churn-demo.com`
+   - Redeploy the project
+
+3. **Automatic Deployment**:
+   - Connect your GitHub repository to Vercel
+   - Set root directory to `frontend`
+   - Configure build settings:
+     - Build Command: `npm run build`
+     - Output Directory: `dist`
+     - Install Command: `npm install`
+   - Set environment variable `VITE_API_BASE_URL`
+
+### CI/CD Pipeline
+
+The project includes GitHub Actions workflows for automated deployment:
+
+#### Backend Workflow (`.github/workflows/backend.yml`)
+- Runs tests on every push/PR
+- Builds and pushes Docker image to GitHub Container Registry
+- Deploys to Render.com on main branch pushes
+- **Required Secrets**:
+  - `RENDER_SERVICE_ID`: Your Render service ID
+  - `RENDER_API_KEY`: Your Render API key
+
+#### Frontend Workflow (`.github/workflows/frontend.yml`)
+- Runs linting and builds on every push/PR
+- Creates preview deployments for PRs
+- Deploys to production on main branch pushes
+- **Required Secrets**:
+  - `VERCEL_TOKEN`: Your Vercel API token
+  - `VERCEL_ORG_ID`: Your Vercel organization ID
+  - `VERCEL_PROJECT_ID`: Your Vercel project ID
+
+### Environment Variables Reference
+
+#### Backend
+- `PORT`: Server port (default: 8000)
+- `LOG_LEVEL`: Logging level (default: INFO)
+- `PYTHONPATH`: Python path (set to /app in Docker)
+
+#### Frontend
+- `VITE_API_BASE_URL`: Backend API URL
+  - Local: `http://localhost:8000`
+  - Production: `https://api.customer-churn-demo.com`
+
+### Verification Steps
+
+1. **Backend Health Check**:
+   ```bash
+   curl https://api.customer-churn-demo.com/health
+   ```
+
+2. **Frontend Functionality**:
+   - Visit https://customer-churn-analysis-kgz3.vercel.app
+   - Upload the sample CSV file (`frontend/sample_data.csv`)
+   - Verify predictions are returned without CORS errors
+
+3. **End-to-End Test**:
+   ```bash
+   curl -X POST https://api.customer-churn-demo.com/predict/batch \
+     -H "Content-Type: application/json" \
+     -d '{"customers": [{"CreditScore": 650, "Geography": "France", "Gender": "Female", "Age": 35, "Tenure": 5, "Balance": 50000, "NumOfProducts": 2, "HasCrCard": 1, "IsActiveMember": 1, "EstimatedSalary": 75000}]}'
+   ```
 
 ## Key Findings
 
