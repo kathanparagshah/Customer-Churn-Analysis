@@ -43,10 +43,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Prometheus metrics
-PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made')
-PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions')
-ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors')
+# Prometheus metrics (with duplicate prevention)
+try:
+    from prometheus_client import CollectorRegistry, REGISTRY
+    # Check if metrics already exist to prevent duplication
+    if 'churn_predictions_total' not in [metric._name for metric in REGISTRY._collector_to_names.keys()]:
+        PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made')
+        PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions')
+        ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors')
+    else:
+        # Retrieve existing metrics
+        for collector in REGISTRY._collector_to_names.keys():
+            if hasattr(collector, '_name'):
+                if collector._name == 'churn_predictions_total':
+                    PREDICTION_COUNTER = collector
+                elif collector._name == 'churn_prediction_duration_seconds':
+                    PREDICTION_LATENCY = collector
+                elif collector._name == 'churn_prediction_errors_total':
+                    ERROR_COUNTER = collector
+except Exception:
+    # Fallback to simple metrics without duplicate checking
+    PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made')
+    PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions')
+    ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors')
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -178,6 +197,10 @@ class ModelManager:
         self.scaler = None
         self.feature_names = []
         self.label_encoders = {}
+        self.model_name = 'Unknown'
+        self.version = '1.0.0'
+        self.training_date = 'Unknown'
+        self.performance_metrics = {}
     
     def load_model(self, model_path: str) -> bool:
         """
@@ -214,12 +237,18 @@ class ModelManager:
             label_encoders = self.label_encoders
             feature_names = self.feature_names
             
-            # Extract model metadata
+            # Set instance metadata attributes
+            self.model_name = model_package.get('model_name', 'Unknown')
+            self.version = model_package.get('version', '1.0.0')
+            self.training_date = model_package.get('training_date', 'Unknown')
+            self.performance_metrics = model_package.get('performance_metrics', {})
+            
+            # Extract model metadata for global variable
             model_metadata = {
-                'model_name': model_package.get('model_name', 'Unknown'),
-                'version': model_package.get('version', '1.0.0'),
-                'training_date': model_package.get('training_date', 'Unknown'),
-                'performance_metrics': model_package.get('performance_metrics', {})
+                'model_name': self.model_name,
+                'version': self.version,
+                'training_date': self.training_date,
+                'performance_metrics': self.performance_metrics
             }
             
             # Set loaded flags

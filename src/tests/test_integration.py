@@ -468,7 +468,8 @@ class TestModelPipelineIntegration:
         
         # Test segmentation
         segmentation = CustomerSegmentation()
-        segmentation.load_data()
+        # Override data directory to use temp directory
+        segmentation.data_dir = temp_dir / 'data'
         
         segmentation_data = segmentation.load_data()
         features = segmentation.select_features(segmentation_data)
@@ -676,7 +677,7 @@ class TestPerformanceIntegration:
             processed_data = engineer.load_processed_data()
             featured_data = engineer.create_ratio_features(processed_data)
             featured_data = engineer.create_binned_features(featured_data)
-            engineer.save_engineered_data(featured_data, {})
+            engineer.save_engineered_data(featured_data)
             
             # Model training (simplified)
             predictor = ChurnPredictor()

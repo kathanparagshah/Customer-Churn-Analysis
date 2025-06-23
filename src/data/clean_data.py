@@ -144,8 +144,8 @@ class DataCleaner:
         """
         df_clean = df.copy()
         
-        # Drop CustomerId and Surname columns
-        pii_columns_to_remove = ['CustomerId', 'Surname']
+        # Drop CustomerId, Surname, and RowNumber columns
+        pii_columns_to_remove = ['CustomerId', 'Surname', 'RowNumber']
         
         for col in pii_columns_to_remove:
             if col in df_clean.columns:
