@@ -35,6 +35,11 @@ from models.segment import CustomerSegmentation
 from models.explain import ModelExplainer
 
 
+@pytest.fixture(name="temp_project_dir")
+def fixture_temp_project_dir(tmp_path):
+    return tmp_path
+
+
 class TestEndToEndPipeline:
     """
     Test the complete end-to-end pipeline from raw data to trained model.
