@@ -108,7 +108,14 @@ class ChurnPredictor:
             else:
                 raise FileNotFoundError("No data file found. Please run data loading pipeline first.")
         
-        df = pd.read_parquet(file_path)
+        # Check file extension and read accordingly
+        if str(file_path).endswith('.csv'):
+            df = pd.read_csv(file_path)
+            print(f"✅ Loading CSV data from {file_path}")
+        else:
+            df = pd.read_parquet(file_path)
+            print(f"✅ Loading Parquet data from {file_path}")
+        
         print(f"Data loaded successfully: {df.shape}")
         
         # Verify target column exists
@@ -131,7 +138,7 @@ class ChurnPredictor:
         
         # Separate features and target
         target_col = 'Exited'
-        feature_cols = [col for col in df.columns if col not in [target_col, 'CustomerId', 'Surname']]
+        feature_cols = [col for col in df.columns if col not in [target_col, 'CustomerId', 'Surname', 'RowNumber']]
         
         X = df[feature_cols].copy()
         y = df[target_col].copy()
@@ -207,7 +214,7 @@ class ChurnPredictor:
         
         # Separate features and target
         target_col = 'Exited'
-        feature_cols = [col for col in df.columns if col not in [target_col, 'CustomerId', 'Surname']]
+        feature_cols = [col for col in df.columns if col not in [target_col, 'CustomerId', 'Surname', 'RowNumber']]
         
         X = df[feature_cols].copy()
         y = df[target_col].copy()
@@ -854,7 +861,7 @@ def run_full_pipeline(data_path: Optional[str] = None, test_size: float = 0.2) -
         X_train, X_test, y_train, y_test = predictor.split_data(X, y, test_size)
         
         # Train baseline model
-        baseline_model = predictor.train_baseline_model(X_train, y_train)
+        baseline_model = predictor.train_baseline_model(X_train, y_train, X_test, y_test)
         
         # Train advanced models
         advanced_models = predictor.train_advanced_models(X_train, y_train)

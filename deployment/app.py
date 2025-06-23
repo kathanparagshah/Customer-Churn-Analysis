@@ -46,26 +46,17 @@ logger = logging.getLogger(__name__)
 # Prometheus metrics (with duplicate prevention)
 try:
     from prometheus_client import CollectorRegistry, REGISTRY
-    # Check if metrics already exist to prevent duplication
-    if 'churn_predictions_total' not in [metric._name for metric in REGISTRY._collector_to_names.keys()]:
-        PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made')
-        PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions')
-        ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors')
-    else:
-        # Retrieve existing metrics
-        for collector in REGISTRY._collector_to_names.keys():
-            if hasattr(collector, '_name'):
-                if collector._name == 'churn_predictions_total':
-                    PREDICTION_COUNTER = collector
-                elif collector._name == 'churn_prediction_duration_seconds':
-                    PREDICTION_LATENCY = collector
-                elif collector._name == 'churn_prediction_errors_total':
-                    ERROR_COUNTER = collector
-except Exception:
-    # Fallback to simple metrics without duplicate checking
-    PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made')
-    PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions')
-    ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors')
+    # Create new registry to avoid conflicts
+    custom_registry = CollectorRegistry()
+    PREDICTION_COUNTER = Counter('churn_predictions_total', 'Total number of predictions made', registry=custom_registry)
+    PREDICTION_LATENCY = Histogram('churn_prediction_duration_seconds', 'Time spent on predictions', registry=custom_registry)
+    ERROR_COUNTER = Counter('churn_prediction_errors_total', 'Total number of prediction errors', registry=custom_registry)
+except Exception as e:
+    logger.warning(f"Prometheus metrics setup failed: {e}. Using default metrics.")
+    # Fallback to simple metrics without registry
+    PREDICTION_COUNTER = None
+    PREDICTION_LATENCY = None
+    ERROR_COUNTER = None
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -360,12 +351,27 @@ async def startup_event():
     """
     Load model on startup.
     """
+    global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
+    
     logger.info("Starting Churn Prediction API...")
-    success = model_manager.load_model()
+    success = model_manager.load_model(str(model_manager.model_path))
     if not success:
         logger.error("Failed to load model on startup")
     else:
-        logger.info("API started successfully")
+        # Ensure global variables are properly set
+        model = model_manager.model
+        scaler = model_manager.scaler
+        label_encoders = model_manager.label_encoders
+        feature_names = model_manager.feature_names
+        model_loaded = True
+        model_metadata = {
+            'model_name': model_manager.model_name,
+            'version': model_manager.version,
+            'training_date': model_manager.training_date,
+            'performance_metrics': model_manager.performance_metrics
+        }
+        logger.info(f"API started successfully with {len(feature_names)} features")
+        logger.info(f"Feature names: {feature_names}")
 
 
 @app.get("/", response_model=Dict[str, str])
@@ -432,49 +438,56 @@ async def predict_churn(
         PredictionResponse: Prediction result
     """
     if not model_loaded:
-        ERROR_COUNTER.inc()
+        if ERROR_COUNTER:
+            ERROR_COUNTER.inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded"
         )
     
     try:
-        with PREDICTION_LATENCY.time():
-            # Preprocess data
-            features = preprocess_customer_data(customer_data)
-            
-            # Make prediction
+        # Preprocess data
+        features = preprocess_customer_data(customer_data)
+        
+        # Make prediction
+        if PREDICTION_LATENCY:
+            with PREDICTION_LATENCY.time():
+                probability = float(model.predict_proba(features)[0, 1])
+                prediction = bool(model.predict(features)[0])
+        else:
             probability = float(model.predict_proba(features)[0, 1])
             prediction = bool(model.predict(features)[0])
-            
-            # Calculate additional metrics
-            risk_level = calculate_risk_level(probability)
-            confidence = calculate_confidence(probability)
-            
-            # Create response
-            response = PredictionResponse(
-                churn_probability=probability,
-                churn_prediction=prediction,
-                risk_level=risk_level,
-                confidence=confidence,
-                timestamp=datetime.now(),
-                model_version=model_metadata.get('version', '1.0.0')
-            )
-            
-            # Update metrics
+        
+        # Calculate additional metrics
+        risk_level = calculate_risk_level(probability)
+        confidence = calculate_confidence(probability)
+        
+        # Create response
+        response = PredictionResponse(
+            churn_probability=probability,
+            churn_prediction=prediction,
+            risk_level=risk_level,
+            confidence=confidence,
+            timestamp=datetime.now(),
+            model_version=model_metadata.get('version', '1.0.0')
+        )
+        
+        # Update metrics
+        if PREDICTION_COUNTER:
             PREDICTION_COUNTER.inc()
-            
-            # Log prediction (background task)
-            background_tasks.add_task(
-                log_prediction,
-                customer_data.dict(),
-                response.dict()
-            )
-            
-            return response
-            
+        
+        # Log prediction (background task)
+        background_tasks.add_task(
+            log_prediction,
+            customer_data.dict(),
+            response.dict()
+        )
+        
+        return response
+        
     except Exception as e:
-        ERROR_COUNTER.inc()
+        if ERROR_COUNTER:
+            ERROR_COUNTER.inc()
         logger.error(f"Error in prediction: {str(e)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
@@ -499,14 +512,42 @@ async def predict_churn_batch(
         BatchPredictionResponse: Batch prediction results
     """
     if not model_loaded:
-        ERROR_COUNTER.inc()
+        if ERROR_COUNTER:
+            ERROR_COUNTER.inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded"
         )
     
     try:
-        with PREDICTION_LATENCY.time():
+        if PREDICTION_LATENCY:
+            with PREDICTION_LATENCY.time():
+                predictions = []
+                
+                for customer_data in batch_data.customers:
+                    # Preprocess data
+                    features = preprocess_customer_data(customer_data)
+                    
+                    # Make prediction
+                    probability = float(model.predict_proba(features)[0, 1])
+                    prediction = bool(model.predict(features)[0])
+                    
+                    # Calculate additional metrics
+                    risk_level = calculate_risk_level(probability)
+                    confidence = calculate_confidence(probability)
+                    
+                    # Create response
+                    pred_response = PredictionResponse(
+                        churn_probability=probability,
+                        churn_prediction=prediction,
+                        risk_level=risk_level,
+                        confidence=confidence,
+                        timestamp=datetime.now(),
+                        model_version=model_metadata.get('version', '1.0.0')
+                    )
+                    
+                    predictions.append(pred_response)
+        else:
             predictions = []
             
             for customer_data in batch_data.customers:
@@ -548,7 +589,8 @@ async def predict_churn_batch(
             }
             
             # Update metrics
-            PREDICTION_COUNTER.inc(len(predictions))
+            if PREDICTION_COUNTER:
+                PREDICTION_COUNTER.inc(len(predictions))
             
             # Log batch prediction (background task)
             background_tasks.add_task(
@@ -563,7 +605,8 @@ async def predict_churn_batch(
             )
             
     except Exception as e:
-        ERROR_COUNTER.inc()
+        if ERROR_COUNTER:
+            ERROR_COUNTER.inc()
         logger.error(f"Error in batch prediction: {str(e)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
@@ -644,7 +687,8 @@ async def global_exception_handler(request, exc):
     """
     Global exception handler.
     """
-    ERROR_COUNTER.inc()
+    if ERROR_COUNTER:
+        ERROR_COUNTER.inc()
     logger.error(f"Unhandled exception: {str(exc)}")
     logger.error(traceback.format_exc())
     

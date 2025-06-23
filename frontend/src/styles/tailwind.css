@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-surface-gray text-text-primary;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium shadow-sm bg-primary-600 hover:bg-primary-700 text-white transition-all duration-150 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium shadow-sm bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 transition-all duration-150 active:scale-95;
+  }
+  
+  .card {
+    @apply rounded-2xl p-4 mb-6 bg-surface shadow-md;
+  }
+  
+  .heading-xl {
+    @apply text-2xl font-semibold text-text-primary;
+  }
+  
+  .heading-lg {
+    @apply text-xl font-medium text-text-primary;
+  }
+  
+  .body-text {
+    @apply text-base leading-relaxed text-text-secondary;
+  }
+  
+  .upload-zone {
+    @apply border-2 border-dashed border-primary-300 rounded-2xl p-8 text-center transition-all duration-200 hover:border-primary-400 hover:bg-primary-50;
+  }
+  
+  .upload-zone.dragover {
+    @apply border-primary-500 bg-primary-100;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
