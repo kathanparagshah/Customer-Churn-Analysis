@@ -489,7 +489,7 @@ class TestModelPipelineIntegration:
         assert all('churn_rate' in profile for profile in segment_profiles.values())
         
         # Test prediction model
-        predictor = ChurnPredictor(project_root=temp_project_dir)
+        predictor = ChurnPredictor(project_root=temp_dir)
         X, y = predictor.load_and_prepare_data()
         
         # Verify that segmentation didn't affect prediction data
