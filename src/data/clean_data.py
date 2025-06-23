@@ -40,6 +40,38 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class PipelineOutput:
+    """
+    Wrapper class that wraps a fitted transformer and its transformed DataFrame.
+    Delegates all pipeline methods to the transformer and implements __iter__ 
+    so you can unpack (pipeline, df).
+    """
+    
+    def __init__(self, transformer, transformed_df):
+        self.transformer = transformer
+        self.transformed_df = transformed_df
+    
+    def __iter__(self):
+        """Allow unpacking as (pipeline, df)"""
+        yield self.transformer
+        yield self.transformed_df
+    
+    def __getattr__(self, name):
+        """Delegate all other method calls to the transformer"""
+        return getattr(self.transformer, name)
+    
+    def fit_transform(self, X, y=None):
+        """Forward fit_transform to transformer"""
+        return self.transformer.fit_transform(X, y)
+    
+    def transform(self, X):
+        """Forward transform to transformer"""
+        return self.transformer.transform(X)
+    
+    def get_feature_names_out(self, input_features=None):
+        """Forward get_feature_names_out to transformer"""
+        return self.transformer.get_feature_names_out(input_features)
+
 class DataCleaner:
     """
     Handles data cleaning and preprocessing for the churn analysis project.
@@ -124,10 +156,15 @@ class DataCleaner:
     
     def remove_pii(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Drop personally-identifiable columns so tests can run.
+        Alias method for remove_pii_data to maintain API compatibility.
+        
+        Args:
+            df: Input dataframe
+            
+        Returns:
+            pd.DataFrame: Dataframe with PII columns removed
         """
-        cols_to_drop = ["RowNumber", "CustomerId", "Surname"]
-        return df.drop(columns=cols_to_drop, errors="ignore")
+        return self.remove_pii_data(df)
     
     def analyze_missing_values(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
@@ -309,7 +346,7 @@ class DataCleaner:
         logger.info(f"Outlier detection completed. {outlier_analysis['total_outlier_rows']} rows with outliers")
         return outlier_analysis
     
-    def create_preprocessing_pipeline(self, df: pd.DataFrame) -> tuple:
+    def create_preprocessing_pipeline(self, df: pd.DataFrame) -> PipelineOutput:
         """
         Create preprocessing pipeline for features.
         
@@ -317,7 +354,7 @@ class DataCleaner:
             df: Input dataframe for fitting
             
         Returns:
-            tuple: (ColumnTransformer, processed_data) - Fitted preprocessing pipeline and processed data
+            PipelineOutput: Wrapper containing fitted transformer and transformed DataFrame
         """
         # Define transformers for different feature types
         numeric_transformer = Pipeline(steps=[
@@ -362,9 +399,13 @@ class DataCleaner:
         logger.info(f"Binary features: {available_binary}")
         
         # Fit the pipeline and transform the data
-        processed_data = preprocessor.fit_transform(df)
+        processed_array = preprocessor.fit_transform(df)
         
-        return preprocessor, processed_data
+        # Get feature names and create DataFrame
+        feature_names = preprocessor.get_feature_names_out()
+        df_trans = pd.DataFrame(processed_array, columns=feature_names, index=df.index)
+        
+        return PipelineOutput(preprocessor, df_trans)
     
     def remove_unnecessary_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -649,12 +690,12 @@ class DataCleaner:
             logger.error(f"Error saving processed data: {str(e)}")
             raise
     
-    def run_full_pipeline(self) -> bool:
+    def run_full_pipeline(self) -> pd.DataFrame:
         """
         Run the complete data cleaning pipeline.
         
         Returns:
-            bool: Success status
+            pd.DataFrame: Final cleaned DataFrame
         """
         try:
             logger.info("Starting data cleaning pipeline")
@@ -711,7 +752,7 @@ class DataCleaner:
             
         except Exception as e:
             logger.error(f"Data cleaning pipeline failed: {str(e)}")
-            return None
+            raise
 
 def main():
     """

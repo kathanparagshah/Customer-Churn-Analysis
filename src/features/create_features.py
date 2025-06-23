@@ -808,8 +808,15 @@ class FeatureEngineer:
             bool: Success status
         """
         try:
+            # Cast float16 columns to float32 before saving
+            df_to_save = df.copy()
+            float16_cols = df_to_save.select_dtypes(include=['float16']).columns
+            if len(float16_cols) > 0:
+                df_to_save[float16_cols] = df_to_save[float16_cols].astype(np.float32)
+                logger.info(f"Cast {len(float16_cols)} float16 columns to float32 before saving")
+            
             output_path = self.processed_data_dir / filename
-            df.to_parquet(output_path, index=False)
+            df_to_save.to_parquet(output_path, index=False)
             logger.info(f"Engineered features saved to: {output_path}")
             logger.info(f"File size: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
             return True

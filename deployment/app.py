@@ -173,6 +173,11 @@ class ModelManager:
     def __init__(self):
         self.model_path = Path('../models/churn_model.pkl')
         self.start_time = datetime.now()
+        self.is_loaded = False
+        self.model = None
+        self.scaler = None
+        self.feature_names = []
+        self.label_encoders = {}
     
     def load_model(self, model_path: str) -> bool:
         """
@@ -197,10 +202,17 @@ class ModelManager:
             # Load model package
             model_package = joblib.load(model_file_path)
             
-            model = model_package['model']
-            scaler = model_package.get('scaler')
-            label_encoders = model_package.get('label_encoders', {})
-            feature_names = model_package['feature_names']
+            # Set instance variables
+            self.model = model_package['model']
+            self.scaler = model_package.get('scaler')
+            self.label_encoders = model_package.get('label_encoders', {})
+            self.feature_names = model_package['feature_names']
+            
+            # Also set global variables for backward compatibility
+            model = self.model
+            scaler = self.scaler
+            label_encoders = self.label_encoders
+            feature_names = self.feature_names
             
             # Extract model metadata
             model_metadata = {
@@ -210,7 +222,10 @@ class ModelManager:
                 'performance_metrics': model_package.get('performance_metrics', {})
             }
             
+            # Set loaded flags
+            self.is_loaded = True
             model_loaded = True
+            
             logger.info(f"Model loaded successfully: {model_metadata['model_name']}")
             return True
             
