@@ -500,7 +500,7 @@ class DataLoader:
             logger.error(f"Data validation failed: {str(e)}")
             return False
     
-    def save_interim_data(self, df: pd.DataFrame, filename: str = "churn_interim.parquet") -> Path:
+    def save_interim_data(self, df: pd.DataFrame, filename: str = "churn_raw.parquet") -> Path:
         """
         Save interim data to the interim directory.
         
