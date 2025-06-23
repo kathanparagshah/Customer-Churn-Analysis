@@ -122,6 +122,13 @@ class DataCleaner:
         
         return df_clean
     
+    def remove_pii(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Drop personally-identifiable columns so tests can run.
+        """
+        cols_to_drop = ["RowNumber", "CustomerId", "Surname"]
+        return df.drop(columns=cols_to_drop, errors="ignore")
+    
     def analyze_missing_values(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Analyze missing values in the dataset.
