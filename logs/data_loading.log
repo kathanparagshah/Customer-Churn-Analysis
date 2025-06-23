@@ -51,3 +51,49 @@ HTTP response body: b'{"code":403,"message":"Permission \\u0027datasets.get\\u00
 
 2025-06-17 16:45:43,521 - data.load_data - ERROR - All 3 download attempts failed
 2025-06-17 16:45:43,521 - data.load_data - WARNING - Failed to download Churn_Modelling.csv from Kaggle. Returning expected path for pipeline continuity.
+2025-06-22 18:37:15,200 - data.load_data - INFO - Loading data from: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpm5ia9p_1/data/raw/Churn_Modelling.csv
+2025-06-22 18:37:15,202 - data.load_data - INFO - Data loaded successfully. Shape: (1000, 14)
+2025-06-22 18:37:15,202 - data.load_data - INFO - Starting data validation
+2025-06-22 18:37:15,204 - data.load_data - INFO - Schema validation passed
+2025-06-22 18:37:15,205 - data.load_data - INFO - Sanity checks completed. Warnings: 0, Errors: 0
+2025-06-22 18:37:15,205 - data.load_data - INFO - Data validation passed
+2025-06-22 18:37:15,247 - data.load_data - INFO - Interim data saved to /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpm5ia9p_1/data/interim/churn_raw.parquet
+2025-06-22 18:37:15,248 - data.clean_data - INFO - Starting data cleaning pipeline
+2025-06-22 18:37:15,248 - data.clean_data - INFO - Loading interim data from: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpm5ia9p_1/data/interim/churn_raw.parquet
+2025-06-22 18:37:15,308 - data.clean_data - INFO - Data loaded successfully. Shape: (1000, 14)
+2025-06-22 18:37:15,308 - data.clean_data - INFO - Removing PII column: CustomerId
+2025-06-22 18:37:15,309 - data.clean_data - INFO - Removing PII column: Surname
+2025-06-22 18:37:15,309 - data.clean_data - INFO - Removing PII column: RowNumber
+2025-06-22 18:37:15,310 - data.clean_data - INFO - Missing value analysis completed. 2 columns have missing values
+2025-06-22 18:37:15,312 - data.clean_data - INFO - Filled missing CreditScore with median (by geography if available)
+2025-06-22 18:37:15,313 - data.clean_data - INFO - Filled missing EstimatedSalary with median (by geography if available)
+2025-06-22 18:37:15,317 - data.clean_data - INFO - Outlier detection completed. 0 rows with outliers
+2025-06-22 18:37:15,317 - data.clean_data - INFO - Created preprocessing pipeline with 3 transformers
+2025-06-22 18:37:15,317 - data.clean_data - INFO - Numeric features: ['CreditScore', 'Age', 'Tenure', 'Balance', 'EstimatedSalary']
+2025-06-22 18:37:15,317 - data.clean_data - INFO - Categorical features: ['Geography', 'Gender']
+2025-06-22 18:37:15,317 - data.clean_data - INFO - Binary features: ['HasCrCard', 'IsActiveMember']
+2025-06-22 18:37:15,330 - data.clean_data - INFO - Preprocessor saved to: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpm5ia9p_1/models/preprocessor.pkl
+2025-06-22 18:37:15,330 - data.clean_data - ERROR - Data cleaning pipeline failed: Shape of passed values is (1000, 11), indices imply (1000, 10)
+2025-06-22 18:37:43,577 - data.load_data - INFO - Loading data from: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpgh22or56/data/raw/Churn_Modelling.csv
+2025-06-22 18:37:43,579 - data.load_data - INFO - Data loaded successfully. Shape: (1000, 14)
+2025-06-22 18:37:43,579 - data.load_data - INFO - Starting data validation
+2025-06-22 18:37:43,580 - data.load_data - INFO - Schema validation passed
+2025-06-22 18:37:43,581 - data.load_data - INFO - Sanity checks completed. Warnings: 0, Errors: 0
+2025-06-22 18:37:43,581 - data.load_data - INFO - Data validation passed
+2025-06-22 18:37:43,624 - data.load_data - INFO - Interim data saved to /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpgh22or56/data/interim/churn_raw.parquet
+2025-06-22 18:37:43,624 - data.clean_data - INFO - Starting data cleaning pipeline
+2025-06-22 18:37:43,624 - data.clean_data - INFO - Loading interim data from: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpgh22or56/data/interim/churn_raw.parquet
+2025-06-22 18:37:43,683 - data.clean_data - INFO - Data loaded successfully. Shape: (1000, 14)
+2025-06-22 18:37:43,683 - data.clean_data - INFO - Removing PII column: CustomerId
+2025-06-22 18:37:43,684 - data.clean_data - INFO - Removing PII column: Surname
+2025-06-22 18:37:43,684 - data.clean_data - INFO - Removing PII column: RowNumber
+2025-06-22 18:37:43,685 - data.clean_data - INFO - Missing value analysis completed. 2 columns have missing values
+2025-06-22 18:37:43,688 - data.clean_data - INFO - Filled missing CreditScore with median (by geography if available)
+2025-06-22 18:37:43,689 - data.clean_data - INFO - Filled missing EstimatedSalary with median (by geography if available)
+2025-06-22 18:37:43,693 - data.clean_data - INFO - Outlier detection completed. 0 rows with outliers
+2025-06-22 18:37:43,693 - data.clean_data - INFO - Created preprocessing pipeline with 3 transformers
+2025-06-22 18:37:43,693 - data.clean_data - INFO - Numeric features: ['CreditScore', 'Age', 'Tenure', 'Balance', 'EstimatedSalary']
+2025-06-22 18:37:43,693 - data.clean_data - INFO - Categorical features: ['Geography', 'Gender']
+2025-06-22 18:37:43,693 - data.clean_data - INFO - Binary features: ['HasCrCard', 'IsActiveMember']
+2025-06-22 18:37:43,707 - data.clean_data - INFO - Preprocessor saved to: /var/folders/10/wr28fhsj4755wxph12s_h2vc0000gn/T/tmpgh22or56/models/preprocessor.pkl
+2025-06-22 18:37:43,707 - data.clean_data - ERROR - Data cleaning pipeline failed: Shape of passed values is (1000, 11), indices imply (1000, 10)

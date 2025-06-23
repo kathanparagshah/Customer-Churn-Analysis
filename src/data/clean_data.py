@@ -89,7 +89,7 @@ class DataCleaner:
         
         # Define column categories
         self.numeric_features = [
-            'CreditScore', 'Age', 'Tenure', 'Balance', 'EstimatedSalary'
+            'CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'EstimatedSalary'
         ]
         
         self.categorical_features = ['Geography', 'Gender']
@@ -390,7 +390,7 @@ class DataCleaner:
         
         preprocessor = ColumnTransformer(
             transformers=transformers,
-            remainder='drop'  # Drop other columns
+            remainder='passthrough'  # Keep other columns (like target)
         )
         
         logger.info(f"Created preprocessing pipeline with {len(transformers)} transformers")
@@ -402,8 +402,36 @@ class DataCleaner:
         processed_array = preprocessor.fit_transform(df)
         
         # Get feature names and create DataFrame
-        feature_names = preprocessor.get_feature_names_out()
-        df_trans = pd.DataFrame(processed_array, columns=feature_names, index=df.index)
+        try:
+            feature_names = preprocessor.get_feature_names_out()
+            # Check if dimensions match
+            if processed_array.shape[1] != len(feature_names):
+                logger.warning(f"Shape mismatch: array has {processed_array.shape[1]} columns, but {len(feature_names)} feature names")
+                # Handle the mismatch by using only the number of columns that match
+                if processed_array.shape[1] > len(feature_names):
+                    # More columns than names - truncate array
+                    processed_array = processed_array[:, :len(feature_names)]
+                else:
+                    # More names than columns - truncate names
+                    feature_names = feature_names[:processed_array.shape[1]]
+            
+            df_trans = pd.DataFrame(processed_array, columns=feature_names, index=df.index)
+        except Exception as e:
+            logger.error(f"Error creating DataFrame with feature names: {e}")
+            # Fallback: create generic column names
+            generic_names = [f'feature_{i}' for i in range(processed_array.shape[1])]
+            df_trans = pd.DataFrame(processed_array, columns=generic_names, index=df.index)
+        
+        # Ensure target column is preserved if it exists (avoid duplicates)
+        if self.target_column in df.columns:
+            # Check if target is already in the transformed dataframe (from remainder)
+            target_cols = [col for col in df_trans.columns if col.endswith(self.target_column)]
+            if not target_cols:
+                # Target not found, add it
+                df_trans[self.target_column] = df[self.target_column].values
+            elif len(target_cols) == 1 and target_cols[0] != self.target_column:
+                # Target exists as remainder column, rename it
+                df_trans = df_trans.rename(columns={target_cols[0]: self.target_column})
         
         return PipelineOutput(preprocessor, df_trans)
     

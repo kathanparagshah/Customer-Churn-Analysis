@@ -756,6 +756,31 @@ class ChurnPredictor:
         print("✅ Model calibration completed")
         return calibrated_model
     
+    def save_model(self, model, model_name: str, metrics: Dict[str, float]) -> None:
+        """
+        Save a single model with its metrics.
+        
+        Args:
+            model: Trained model to save
+            model_name: Name of the model
+            metrics: Model evaluation metrics
+        """
+        print(f"💾 Saving {model_name} model...")
+        
+        # Create deployment package
+        deployment_package = {
+            'model': model,
+            'model_name': model_name,
+            'scaler': self.scaler,
+            'label_encoders': self.label_encoders,
+            'feature_names': self.feature_names,
+            'evaluation_metrics': metrics
+        }
+        
+        model_path = self.models_dir / 'churn_model.pkl'
+        joblib.dump(deployment_package, model_path)
+        print(f"✅ Saved {model_name} model package to {model_path}")
+    
     def save_models(self) -> None:
         """
         Save all trained models and preprocessing components.
