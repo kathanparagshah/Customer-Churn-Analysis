@@ -185,7 +185,9 @@ class ModelManager:
     """
     
     def __init__(self):
-        self.model_path = Path('../models/churn_model.pkl')
+        self.model_path = Path(__file__).resolve().parent.parent / 'models' / 'churn_model.pkl'
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"Model file not found at {self.model_path}")
         self.start_time = datetime.now()
         self.is_loaded = False
         self.model = None
@@ -500,7 +502,7 @@ async def predict_churn(
         )
 
 
-@app.post("/predict/batch", response_model=BatchPredictionResponse)
+@app.post("/predict/batch")
 async def predict_churn_batch(
     batch_data: BatchCustomerData,
     background_tasks: BackgroundTasks
@@ -513,17 +515,17 @@ async def predict_churn_batch(
         background_tasks (BackgroundTasks): Background tasks for logging
         
     Returns:
-        BatchPredictionResponse: Batch prediction results
+        dict: Batch prediction results
     """
-    if not model_loaded:
-        if ERROR_COUNTER:
-            ERROR_COUNTER.inc()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Model not loaded"
-        )
-    
     try:
+        if not model_loaded:
+            if ERROR_COUNTER:
+                ERROR_COUNTER.inc()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Model not loaded"
+            )
+        
         if PREDICTION_LATENCY:
             with PREDICTION_LATENCY.time():
                 predictions = []
@@ -541,14 +543,14 @@ async def predict_churn_batch(
                     confidence = calculate_confidence(probability)
                     
                     # Create response
-                    pred_response = PredictionResponse(
-                        churn_probability=probability,
-                        churn_prediction=prediction,
-                        risk_level=risk_level,
-                        confidence=confidence,
-                        timestamp=datetime.now(),
-                        model_version=model_metadata.get('version', '1.0.0')
-                    )
+                    pred_response = {
+                        "churn_probability": probability,
+                        "churn_prediction": prediction,
+                        "risk_level": risk_level,
+                        "confidence": confidence,
+                        "timestamp": datetime.now().isoformat(),
+                        "model_version": model_metadata.get('version', '1.0.0')
+                    }
                     
                     predictions.append(pred_response)
         else:
@@ -567,56 +569,55 @@ async def predict_churn_batch(
                 confidence = calculate_confidence(probability)
                 
                 # Create response
-                pred_response = PredictionResponse(
-                    churn_probability=probability,
-                    churn_prediction=prediction,
-                    risk_level=risk_level,
-                    confidence=confidence,
-                    timestamp=datetime.now(),
-                    model_version=model_metadata.get('version', '1.0.0')
-                )
+                pred_response = {
+                    "churn_probability": probability,
+                    "churn_prediction": prediction,
+                    "risk_level": risk_level,
+                    "confidence": confidence,
+                    "timestamp": datetime.now().isoformat(),
+                    "model_version": model_metadata.get('version', '1.0.0')
+                }
                 
                 predictions.append(pred_response)
-            
-            # Calculate summary statistics
-            probabilities = [p.churn_probability for p in predictions]
-            churn_predictions = [p.churn_prediction for p in predictions]
-            
-            summary = {
-                "total_customers": len(predictions),
-                "predicted_churners": sum(churn_predictions),
-                "churn_rate": sum(churn_predictions) / len(predictions),
-                "avg_churn_probability": np.mean(probabilities),
-                "high_risk_customers": sum(1 for p in predictions if p.risk_level == "High"),
-                "medium_risk_customers": sum(1 for p in predictions if p.risk_level == "Medium"),
-                "low_risk_customers": sum(1 for p in predictions if p.risk_level == "Low")
-            }
-            
-            # Update metrics
-            if PREDICTION_COUNTER:
-                PREDICTION_COUNTER.inc(len(predictions))
-            
-            # Log batch prediction (background task)
-            background_tasks.add_task(
-                log_batch_prediction,
-                len(batch_data.customers),
-                summary
-            )
-            
-            return BatchPredictionResponse(
-                predictions=predictions,
-                summary=summary
-            )
-            
-    except Exception as e:
-        if ERROR_COUNTER:
-            ERROR_COUNTER.inc()
-        logger.error(f"Error in batch prediction: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch prediction error: {str(e)}"
+        
+        # Calculate summary statistics
+        probabilities = [p["churn_probability"] for p in predictions]
+        churn_predictions = [p["churn_prediction"] for p in predictions]
+        
+        summary = {
+            "total_customers": len(predictions),
+            "predicted_churners": sum(churn_predictions),
+            "churn_rate": sum(churn_predictions) / len(predictions) if predictions else 0,
+            "avg_churn_probability": float(np.mean(probabilities)) if probabilities else 0,
+            "high_risk_customers": sum(1 for p in predictions if p["risk_level"] == "High"),
+            "medium_risk_customers": sum(1 for p in predictions if p["risk_level"] == "Medium"),
+            "low_risk_customers": sum(1 for p in predictions if p["risk_level"] == "Low")
+        }
+        
+        # Update metrics
+        if PREDICTION_COUNTER:
+            PREDICTION_COUNTER.inc(len(predictions))
+        
+        # Log batch prediction (background task)
+        background_tasks.add_task(
+            log_batch_prediction,
+            len(batch_data.customers),
+            summary
         )
+        
+        return {
+            "predictions": predictions,
+            "summary": summary,
+            "model_loaded": model_loaded,
+            "model_name": model_metadata.get('name', 'unknown'),
+            "version": model_metadata.get('version', '1.0.0')
+        }
+        
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(tb)
+        return {"detail": tb}
 
 
 @app.get("/metrics")

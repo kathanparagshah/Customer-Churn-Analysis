@@ -165,8 +165,7 @@ const CSVUploader = () => {
         EstimatedSalary: parseFloat(row.EstimatedSalary)
       }));
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiBaseUrl}/predict/batch`, {
+      const response = await fetch('/api/predict/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
