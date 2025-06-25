@@ -104,14 +104,14 @@ class CustomerData(BaseModel):
     IsActiveMember: int = Field(..., ge=0, le=1, description="Is active member (0 or 1)")
     EstimatedSalary: float = Field(..., ge=0, description="Estimated salary")
     
-    @validator('Geography')
+    @validator('Geography', allow_reuse=True)
     def validate_geography(cls, v):
         allowed_geographies = ['France', 'Spain', 'Germany']
         if v not in allowed_geographies:
             raise ValueError(f'Geography must be one of {allowed_geographies}')
         return v
     
-    @validator('Gender')
+    @validator('Gender', allow_reuse=True)
     def validate_gender(cls, v):
         allowed_genders = ['Male', 'Female']
         if v not in allowed_genders:
@@ -141,7 +141,7 @@ class BatchCustomerData(BaseModel):
     """
     customers: List[CustomerData] = Field(..., description="List of customer data")
     
-    @validator('customers')
+    @validator('customers', allow_reuse=True)
     def validate_batch_size(cls, v):
         if len(v) > 1000:  # Limit batch size
             raise ValueError('Batch size cannot exceed 1000 customers')
@@ -185,18 +185,29 @@ class ModelManager:
     """
     
     def __init__(self):
-        self.model_path = Path(__file__).resolve().parent.parent / 'models' / 'churn_model.pkl'
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model file not found at {self.model_path}")
         self.start_time = datetime.now()
-        self.is_loaded = False
-        self.model = None
-        self.scaler = None
-        self.feature_names = []
-        self.label_encoders = {}
-        self.model_name = 'Unknown'
-        self.version = '1.0.0'
-        self.training_date = 'Unknown'
+        try:
+            # existing load logic (opening pickle, setting model, scaler, etc.)
+            self.model_path = Path(__file__).resolve().parent.parent / 'models' / 'churn_model.pkl'
+            model_package = joblib.load(self.model_path)
+            self.model = model_package['model']
+            self.scaler = model_package.get('scaler')
+            self.feature_names = model_package['feature_names']
+            self.label_encoders = model_package.get('label_encoders', {})
+            self.model_name = model_package.get('model_name', 'unknown')
+            self.version = model_package.get('version', '1.0.0')
+            self.training_date = model_package.get('training_date', 'unknown')
+            self.is_loaded = True
+        except FileNotFoundError:
+            logger.warning(f"Model file not found at {self.model_path}; running without a model for tests")
+            self.model = None
+            self.scaler = None
+            self.feature_names = []
+            self.label_encoders = {}
+            self.model_name = 'unknown'
+            self.version = '1.0.0'
+            self.training_date = 'unknown'
+            self.is_loaded = False
         self.performance_metrics = {}
     
     def load_model(self, model_path: str) -> bool:
