@@ -4,3 +4,5 @@ pytest
 pytest-cov
 matplotlib
 flake8
+requests
+seaborn
