@@ -160,12 +160,19 @@ jobs:
     - name: Build Docker image
       run: docker build -f deployment/Dockerfile -t churn-app:latest .
     
+    # Tear down any previous test container
+    - name: Clean up old container
+      run: docker rm -f churn-smoke-test || true
+    
     # Run the container in the background
     - name: Run app container
+      run: docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
+    
+    # Wait for health endpoint
+    - name: Wait for health endpoint
       run: |
-        docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
-        echo "Waiting for health endpoint…"
         until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)" -eq 200 ]; do
+          echo "→ health returned $response, retrying…"
           sleep 1
         done
     
