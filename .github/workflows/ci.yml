@@ -165,9 +165,11 @@ jobs:
       run: |
         docker run -d --rm -p 8001:8000 --name churn-smoke-test churn-app:latest
         echo "Waiting for health endpoint…"
-        until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/health)" -eq 200 ]; do
+        until status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/health) && [ "$status" -eq 200 ]; do
+          echo "→ health returned $status, retrying…"
           sleep 1
         done
+        echo "Health is up!"
     
     # Smoke-test the health endpoint
     - name: Smoke-test health endpoint
