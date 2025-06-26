@@ -99,6 +99,10 @@ class ModelExplainer:
         self.label_encoders = model_package.get('label_encoders', {})
         self.feature_names = model_package['feature_names']
         
+        # Populate feature_names from scaler if available
+        if self.scaler is not None and hasattr(self.scaler, 'feature_names_in_'):
+            self.feature_names = list(self.scaler.feature_names_in_)
+        
         print(f"✅ Loaded {self.model_name} model with {len(self.feature_names)} features")
     
     def load_data(self, file_path: Optional[str] = None, sample_size: int = 1000) -> pd.DataFrame:
@@ -148,28 +152,18 @@ class ModelExplainer:
         """
         print("🔧 Preparing data for explanation...")
         
-        # Select features and target
-        if self.scaler is not None and hasattr(self.scaler, 'feature_names_in_'):
-            # Use scaler's feature names if available
-            X = df[self.scaler.feature_names_in_]
-            y = df['Exited']
-            X_scaled = self.scaler.transform(X)
-            self.X_explain = pd.DataFrame(X_scaled, columns=self.scaler.feature_names_in_, index=df.index)
+        # Use self.feature_names for consistent feature selection
+        X = df[self.feature_names]
+        if self.scaler is not None:
+            X = pd.DataFrame(self.scaler.transform(X), 
+                            columns=self.feature_names, 
+                            index=df.index)
         else:
-            # Fallback to using feature_names from model
-            if self.feature_names:
-                X = df[self.feature_names]
-            else:
-                X = df.drop('Exited', axis=1)
-            y = df['Exited']
-            if self.scaler is not None:
-                X_scaled = self.scaler.transform(X)
-                self.X_explain = pd.DataFrame(X_scaled, columns=X.columns, index=df.index)
-            else:
-                self.X_explain = X.copy()
+            X = pd.DataFrame(X, columns=self.feature_names, index=df.index)
+        y = pd.Series(df['Exited'], name='Exited', index=df.index)
         
-        print(f"Explanation data shape: {self.X_explain.shape}")
-        return self.X_explain, y
+        print(f"Explanation data shape: {X.shape}")
+        return X, y
     
     def create_shap_explainer(self, background_size: int = 100) -> None:
         """

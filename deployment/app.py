@@ -22,7 +22,13 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# TestClient compatibility handled in test files
+# TestClient compatibility monkey patch
+from fastapi.testclient import TestClient as _TestClient
+_orig_init = _TestClient.__init__
+def _patched_init(self, app, *args, **kwargs):
+    kwargs.pop('app', None)
+    return _orig_init(self, app, *args, **kwargs)
+_TestClient.__init__ = _patched_init
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
