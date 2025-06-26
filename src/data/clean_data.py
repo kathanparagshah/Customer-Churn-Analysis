@@ -390,7 +390,7 @@ class DataCleaner:
         
         preprocessor = ColumnTransformer(
             transformers=transformers,
-            remainder='passthrough'  # Keep other columns (like target)
+            remainder='drop'  # Drop other columns to match expected feature count
         )
         
         logger.info(f"Created preprocessing pipeline with {len(transformers)} transformers")
@@ -403,17 +403,10 @@ class DataCleaner:
         
         # Get feature names and create DataFrame
         try:
-            feature_names = preprocessor.get_feature_names_out()
-            # Check if dimensions match
-            if processed_array.shape[1] != len(feature_names):
-                logger.warning(f"Shape mismatch: array has {processed_array.shape[1]} columns, but {len(feature_names)} feature names")
-                # Handle the mismatch by using only the number of columns that match
-                if processed_array.shape[1] > len(feature_names):
-                    # More columns than names - truncate array
-                    processed_array = processed_array[:, :len(feature_names)]
-                else:
-                    # More names than columns - truncate names
-                    feature_names = feature_names[:processed_array.shape[1]]
+            # Build feature names exactly matching transformed columns
+            ohe = preprocessor.named_transformers_['cat']
+            cat_names = ohe.get_feature_names_out(available_categorical)
+            feature_names = list(available_numeric) + list(cat_names)
             
             df_trans = pd.DataFrame(processed_array, columns=feature_names, index=df.index)
         except Exception as e:

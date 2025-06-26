@@ -23,6 +23,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import numpy as np
 import pandas as pd
 import joblib
+
 from fastapi.testclient import TestClient
 from fastapi import status
 from sklearn.ensemble import RandomForestClassifier

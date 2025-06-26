@@ -148,49 +148,25 @@ class ModelExplainer:
         """
         print("🔧 Preparing data for explanation...")
         
-        # Separate features and target
-        target_col = 'Exited'
-        exclude_cols = [target_col, 'CustomerId', 'Surname']
-        feature_cols = [col for col in df.columns if col not in exclude_cols]
-        
-        X = df[feature_cols].copy()
-        y = df[target_col].copy() if target_col in df.columns else None
-        
-        # Apply same preprocessing as training
-        # Handle categorical variables
-        categorical_cols = X.select_dtypes(include=['object']).columns
-        
-        for col in categorical_cols:
-            if col in self.label_encoders:
-                X[col] = self.label_encoders[col].transform(X[col].astype(str))
-            else:
-                print(f"⚠️  No encoder found for {col}, using label encoding")
-                from sklearn.preprocessing import LabelEncoder
-                le = LabelEncoder()
-                X[col] = le.fit_transform(X[col].astype(str))
-        
-        # Handle missing values
-        if X.isnull().sum().sum() > 0:
-            print("⚠️  Found missing values. Filling with median/mode...")
-            for col in X.columns:
-                if X[col].dtype in ['int64', 'float64']:
-                    X[col].fillna(X[col].median(), inplace=True)
-                else:
-                    X[col].fillna(X[col].mode()[0], inplace=True)
-        
-        # Ensure feature order matches training
-        X = X[self.feature_names]
-        
-        # Apply scaling if needed
-        if self.scaler is not None:
-            X_scaled = pd.DataFrame(
-                self.scaler.transform(X),
-                columns=X.columns,
-                index=X.index
-            )
-            self.X_explain = X_scaled
+        # Select features and target
+        if self.scaler is not None and hasattr(self.scaler, 'feature_names_in_'):
+            # Use scaler's feature names if available
+            X = df[self.scaler.feature_names_in_]
+            y = df['Exited']
+            X_scaled = self.scaler.transform(X)
+            self.X_explain = pd.DataFrame(X_scaled, columns=self.scaler.feature_names_in_, index=df.index)
         else:
-            self.X_explain = X
+            # Fallback to using feature_names from model
+            if self.feature_names:
+                X = df[self.feature_names]
+            else:
+                X = df.drop('Exited', axis=1)
+            y = df['Exited']
+            if self.scaler is not None:
+                X_scaled = self.scaler.transform(X)
+                self.X_explain = pd.DataFrame(X_scaled, columns=X.columns, index=df.index)
+            else:
+                self.X_explain = X.copy()
         
         print(f"Explanation data shape: {self.X_explain.shape}")
         return self.X_explain, y

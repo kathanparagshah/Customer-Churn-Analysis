@@ -21,6 +21,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import joblib
+
+# TestClient compatibility handled in test files
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

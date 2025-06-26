@@ -26,6 +26,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.cluster import KMeans
+
 from fastapi.testclient import TestClient
 import warnings
 warnings.filterwarnings('ignore')
