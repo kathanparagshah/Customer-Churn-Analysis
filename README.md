@@ -213,6 +213,17 @@ The CI workflow will automatically handle credential setup and data download tes
 
 ## Usage
 
+### Running with Docker Compose
+
+```bash
+docker-compose up --build -d
+```
+
+**Endpoints:**
+- Healthcheck: http://localhost:8000/health
+- Swagger UI: http://localhost:8000/docs
+- Predict: POST JSON to http://localhost:8000/predict
+
 ### Running the Full Pipeline End-to-End
 
 The complete machine learning pipeline can be executed in sequence:

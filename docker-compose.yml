@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: deployment/Dockerfile
+    container_name: churn-prediction-api
     ports:
       - "8000:8000"
     environment:
@@ -13,7 +14,7 @@ services:
       - MODEL_PATH=/app/models/churn_model.pkl
     volumes:
       - ./logs:/app/logs
-      - ./data:/app/data
+      - ./reports:/app/reports
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
