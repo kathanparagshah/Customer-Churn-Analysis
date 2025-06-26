@@ -46,7 +46,7 @@ WORKDIR /app
 # Copy application code
 COPY deployment/app.py .
 COPY src/ ./src/
-COPY models/ ./models/
+COPY deployment/models/ ./models/
 
 # Create necessary directories
 RUN mkdir -p logs reports/figures

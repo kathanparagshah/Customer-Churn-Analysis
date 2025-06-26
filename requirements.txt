@@ -1,107 +1,12 @@
-# Core Data Science Libraries
-pandas>=1.5.0,<2.2.0
-numpy>=1.19.0,<1.25.0
-scipy>=1.7.0,<1.12.0
-scikit-learn>=1.1.0,<1.4.0
-
-# Machine Learning & Advanced Models
-xgboost==2.0.3
-lightgbm==4.1.0
-imbalanced-learn==0.11.0
-
-# Model Explainability
-shap==0.44.0
-lime==0.2.0.1
-
-# Data Visualization
-matplotlib>=3.2,<4.0
-seaborn>=0.10.1,<0.13
-plotly==5.17.0
-
-# Jupyter & Notebooks
-jupyter==1.0.0
-ipykernel==6.27.1
-ipywidgets==8.1.1
-
-# Data Processing & Storage
-pyarrow==14.0.2
-fastparquet==2023.10.1
-h5py==3.10.0
-
-# API & Web Framework
+# Runtime API Dependencies
 fastapi==0.104.1
 uvicorn==0.24.0
 pydantic>=1.9.2,<2.0.0
-requests==2.31.0
-httpx<0.24.0
-
-# Data Acquisition
-kaggle==1.5.16
-opendatasets==0.1.22
-
-# Model Serialization & Versioning
 joblib>=1.1.0,<1.4.0
-pickle-mixin==1.0.2
-mlflow==2.8.1
-
-# Statistical Analysis
-statsmodels==0.14.1
-
-# Clustering & Dimensionality Reduction
-umap-learn==0.5.5
-hdbscan==0.8.33
-
-# Data Quality & Validation
-great-expectations==0.18.8
-pandera==0.17.2
-
-# Monitoring & Logging
-evidently==0.4.11
-wandb==0.16.1
-
-# Utilities
-tqdm==4.66.1
-python-dotenv==1.0.0
-click==8.1.7
-pyyaml==6.0.1
-
-# Testing
-pytest==7.4.3
-pytest-cov==4.1.0
-
-# Development Tools
-black==23.11.0
-flake8==6.1.0
-isort==5.12.0
-
-# Docker & Deployment
-gunicorn==21.2.0
-
-# Date & Time Handling
-python-dateutil==2.8.2
-
-# Environment & Configuration
-configparser==6.0.0
-
-# Fairness & Bias Detection
-fairlearn==0.10.0
-aif360==0.5.0
-
-# Feature Engineering
-feature-engine==1.6.2
-category-encoders==2.6.3
-
-# Time Series (if needed)
-statsforecast==1.6.0
-
-# Hyperparameter Optimization
-optuna==3.4.0
-hyperopt==0.2.7
-
-# Data Profiling
-ydata-profiling>=4.0.0,<5.0.0
-
-# Database Connectivity (if needed)
-sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-pymongo==4.6.0
+numpy==1.26.3
+pandas>=1.5.0,<2.2.0
+scikit-learn>=1.1.0,<1.4.0
+xgboost==2.0.3
+lightgbm==4.1.0
+imbalanced-learn==0.11.0
+prometheus-client>=0.16.0,<1.0.0

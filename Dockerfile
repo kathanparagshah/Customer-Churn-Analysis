@@ -10,11 +10,13 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy requirements and constraints files for better caching
+COPY requirements.txt constraints.txt ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with pip cache mount and constraints
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt -c constraints.txt
 
 # Copy the entire project
 COPY . .
