@@ -1,0 +1,5 @@
+fastapi[test]
+httpx
+pytest
+pytest-cov
+matplotlib
