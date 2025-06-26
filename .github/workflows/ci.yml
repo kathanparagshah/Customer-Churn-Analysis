@@ -171,7 +171,9 @@ jobs:
     # Wait for health endpoint
     - name: Wait for health endpoint
       run: |
-        until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)" -eq 200 ]; do
+        response=""
+        until [ "$response" -eq 200 ]; do
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
           echo "→ health returned $response, retrying…"
           sleep 1
         done
