@@ -830,9 +830,9 @@ class ChurnPredictor:
             joblib.dump(deployment_package, best_model_joblib_path, compress=("gzip", 3))
             print(f"✅ Saved best model package to {best_model_joblib_path} with gzip compression")
             
-            # Also save as .pkl for backward compatibility
-            joblib.dump(deployment_package, best_model_path)
-            print(f"✅ Saved best model package to {best_model_path}")
+            # Also save as .pkl for backward compatibility with gzip compression
+            joblib.dump(deployment_package, best_model_path, compress="gzip")
+            print(f"✅ Saved best model package to {best_model_path} with gzip compression")
         
         # Save evaluation results
         results_path = self.reports_dir / 'model_evaluation_results.json'

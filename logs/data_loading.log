@@ -120,3 +120,9 @@ HTTP response body: b'{"code":403,"message":"Permission \\u0027datasets.get\\u00
 
 2025-06-22 20:21:11,153 - src.data.load_data - ERROR - All 3 download attempts failed
 2025-06-22 20:21:11,153 - src.data.load_data - WARNING - Failed to download Churn_Modelling.csv from Kaggle. Returning expected path for pipeline continuity.
+2025-06-26 13:01:44,102 - __main__ - INFO - Starting data loading pipeline
+2025-06-26 13:01:44,104 - __main__ - INFO - Loading data from: /Users/kathan/Downloads/Customer Churn Analysis/data/raw/Churn_Modelling.csv
+2025-06-26 13:01:44,116 - __main__ - INFO - Data loaded successfully. Shape: (15, 14)
+2025-06-26 13:01:44,121 - __main__ - INFO - Schema validation passed
+2025-06-26 13:01:44,123 - __main__ - INFO - Sanity checks completed. Warnings: 0, Errors: 0
+2025-06-26 13:01:44,123 - __main__ - ERROR - Pipeline failed: tuple indices must be integers or slices, not str

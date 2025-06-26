@@ -188,7 +188,7 @@ class ModelManager:
         self.start_time = datetime.now()
         try:
             # existing load logic (opening pickle, setting model, scaler, etc.)
-            self.model_path = Path(__file__).resolve().parent.parent / 'models' / 'churn_model.pkl'
+            self.model_path = Path(__file__).resolve().parent / 'models' / 'churn_model.pkl'
             model_package = joblib.load(self.model_path)
             self.model = model_package['model']
             self.scaler = model_package.get('scaler')
