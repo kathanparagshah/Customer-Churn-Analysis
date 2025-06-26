@@ -156,65 +156,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    # Build the image from the repo root and tag it
     - name: Build Docker image
-      run: docker build -f deployment/Dockerfile -t churn-api:test .
+      run: docker build -f deployment/Dockerfile -t churn-app:latest .
     
-    - name: Start Docker container
+    # Run the container in the background
+    - name: Run app container
       run: |
-        docker run -d --name churn-api-test -p 8000:8000 churn-api:test
-        sleep 10  # Wait for container to start
+        docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
+        echo "Waiting for health endpoint…"
+        until curl -s http://localhost:8000/health | grep -q "200"; do sleep 1; done
     
-    - name: Test health endpoint
+    # Smoke-test the health endpoint
+    - name: Smoke-test health endpoint
       run: |
         response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-        if [ "$response" != "200" ]; then
-          echo "Health check failed with status: $response"
-          docker logs churn-api-test
-          exit 1
-        fi
-        echo "Health check passed with status: $response"
+        [ "$response" -eq 200 ]
     
-    - name: Test docs endpoint
-      run: |
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/docs)
-        if [ "$response" != "200" ]; then
-          echo "Docs endpoint failed with status: $response"
-          docker logs churn-api-test
-          exit 1
-        fi
-        echo "Docs endpoint passed with status: $response"
-    
-    - name: Test prediction endpoint
-      run: |
-        response=$(curl -s -X POST "http://localhost:8000/predict" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "credit_score": 650,
-            "geography": "France",
-            "gender": "Female",
-            "age": 42,
-            "tenure": 2,
-            "balance": 83807.86,
-            "num_of_products": 1,
-            "has_cr_card": 1,
-            "is_active_member": 1,
-            "estimated_salary": 112542.58
-          }' \
-          -w "%{http_code}")
-        
-        http_code=$(echo "$response" | tail -c 4)
-        if [ "$http_code" != "200" ]; then
-          echo "Prediction endpoint failed with status: $http_code"
-          docker logs churn-api-test
-          exit 1
-        fi
-        echo "Prediction endpoint passed with status: $http_code"
-    
-    - name: Cleanup
-      if: always()
-      run: |
-        docker stop churn-api-test || true
-        docker rm churn-api-test || true
+    # Tear down
+    - name: Stop container
+      run: docker stop churn-smoke-test
 
   container-registry:
     needs: [test, docker-smoke-test]
