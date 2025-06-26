@@ -163,14 +163,14 @@ jobs:
     # Run the container in the background
     - name: Run app container
       run: |
-        docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
+        docker run -d --rm -p 8001:8000 --name churn-smoke-test churn-app:latest
         echo "Waiting for health endpoint…"
-        until curl -s http://localhost:8000/health | grep -q "200"; do sleep 1; done
+        until curl -s http://localhost:8001/health | grep -q "200"; do sleep 1; done
     
     # Smoke-test the health endpoint
     - name: Smoke-test health endpoint
       run: |
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/health)
         [ "$response" -eq 200 ]
     
     # Tear down
