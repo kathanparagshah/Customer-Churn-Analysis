@@ -1,0 +1,124 @@
+name: Weekly Model Retraining
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  retrain-model:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Setup Kaggle credentials
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: |
+        mkdir -p ~/.kaggle
+        if [ ! -z "$KAGGLE_USERNAME" ] && [ ! -z "$KAGGLE_KEY" ]; then
+          echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          echo "Created kaggle.json from environment variables"
+        else
+          echo "Error: Kaggle credentials not found"
+          exit 1
+        fi
+    
+    - name: Download latest data
+      run: |
+        python src/data/load_data.py
+    
+    - name: Retrain model
+      run: |
+        python src/models/train_churn.py
+    
+    - name: Copy new model to deployment
+      run: |
+        mkdir -p deployment/models
+        cp models/churn_model.joblib deployment/models/churn_model.pkl
+        echo "Model copied to deployment directory"
+    
+    - name: Test new model
+      run: |
+        cd deployment
+        python -c "
+        import joblib
+        import numpy as np
+        
+        # Test model loading
+        model_data = joblib.load('models/churn_model.pkl')
+        print(f'Model type: {model_data[\"model_name\"]}')
+        print(f'Features: {len(model_data[\"feature_names\"])}')
+        print('Model loaded successfully')
+        "
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Get current date for tagging
+      id: date
+      run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+    
+    - name: Build and push retrained model image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./deployment
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/customerchurn:retrain-${{ steps.date.outputs.date }}
+          ${{ secrets.DOCKER_USERNAME }}/customerchurn:latest-retrained
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Commit and push new model
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add deployment/models/churn_model.pkl
+        git add models/
+        
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: Weekly model retrain - $(date +'%Y-%m-%d')
+          
+          - Retrained model with latest data
+          - Updated deployment artifact
+          - Built and pushed Docker image: retrain-${{ steps.date.outputs.date }}"
+          git push
+        fi
+    
+    - name: Create retraining summary
+      run: |
+        echo "## Weekly Retraining Summary - $(date +'%Y-%m-%d')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Model successfully retrained and deployed" >> $GITHUB_STEP_SUMMARY
+        echo "🐳 Docker image: \`${{ secrets.DOCKER_USERNAME }}/customerchurn:retrain-${{ steps.date.outputs.date }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "📦 Model artifact updated in \`deployment/models/churn_model.pkl\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "- Review model performance metrics" >> $GITHUB_STEP_SUMMARY
+        echo "- Update production deployment if needed" >> $GITHUB_STEP_SUMMARY
+        echo "- Monitor model performance in production" >> $GITHUB_STEP_SUMMARY

@@ -149,6 +149,115 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  docker-smoke-test:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: |
+        cd deployment
+        docker build -t churn-api:test .
+    
+    - name: Start Docker container
+      run: |
+        docker run -d --name churn-api-test -p 8000:8000 churn-api:test
+        sleep 10  # Wait for container to start
+    
+    - name: Test health endpoint
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
+        if [ "$response" != "200" ]; then
+          echo "Health check failed with status: $response"
+          docker logs churn-api-test
+          exit 1
+        fi
+        echo "Health check passed with status: $response"
+    
+    - name: Test docs endpoint
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/docs)
+        if [ "$response" != "200" ]; then
+          echo "Docs endpoint failed with status: $response"
+          docker logs churn-api-test
+          exit 1
+        fi
+        echo "Docs endpoint passed with status: $response"
+    
+    - name: Test prediction endpoint
+      run: |
+        response=$(curl -s -X POST "http://localhost:8000/predict" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "credit_score": 650,
+            "geography": "France",
+            "gender": "Female",
+            "age": 42,
+            "tenure": 2,
+            "balance": 83807.86,
+            "num_of_products": 1,
+            "has_cr_card": 1,
+            "is_active_member": 1,
+            "estimated_salary": 112542.58
+          }' \
+          -w "%{http_code}")
+        
+        http_code=$(echo "$response" | tail -c 4)
+        if [ "$http_code" != "200" ]; then
+          echo "Prediction endpoint failed with status: $http_code"
+          docker logs churn-api-test
+          exit 1
+        fi
+        echo "Prediction endpoint passed with status: $http_code"
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop churn-api-test || true
+        docker rm churn-api-test || true
+
+  container-registry:
+    needs: [test, docker-smoke-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKER_USERNAME }}/customerchurn
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./deployment
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
   integration-test:
     needs: test
     runs-on: ubuntu-latest

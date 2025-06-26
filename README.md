@@ -366,6 +366,8 @@ uvicorn deployment.app:app --reload --host 0.0.0.0 --port 8000
 
 #### Docker Deployment
 
+**Model Information**: The churn prediction model is now saved with NumPy 1.26.3 compatibility and gzip compression at `deployment/models/churn_model.pkl`.
+
 ```bash
 # Build Docker image
 cd deployment
@@ -374,8 +376,11 @@ docker build -t bank-churn-api .
 # Run container
 docker run -p 8000:8000 bank-churn-api
 
-# Or use docker-compose
+# Or use docker-compose (recommended)
 docker-compose up -d
+
+# Check API health
+curl http://localhost:8000/health
 ```
 
 #### Production Deployment
@@ -419,7 +424,10 @@ curl -X POST "http://localhost:8000/predict" \
    
    # API will be available at http://localhost:8000
    # API docs at http://localhost:8000/docs
+   # Health check at http://localhost:8000/health
    ```
+
+   **Note**: The model is now saved with NumPy 1.26.3 compatibility and gzip compression for improved performance and reliability.
 
 2. **Manual Setup**:
    ```bash
