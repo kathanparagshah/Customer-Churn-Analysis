@@ -6,3 +6,4 @@ matplotlib
 flake8
 requests
 seaborn
+shap==0.44.0
