@@ -182,7 +182,7 @@ jobs:
     - name: Smoke-test health endpoint
       run: |
         response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-        [ "$response" -eq 200 ]
+        [ "$response" = "200" ]
     
     # Tear down
     - name: Stop container
