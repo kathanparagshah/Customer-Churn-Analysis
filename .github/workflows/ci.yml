@@ -154,7 +154,7 @@ jobs:
     if: github.event_name == 'push'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     # Build the image from the repo root and tag it
     - name: Build Docker image
