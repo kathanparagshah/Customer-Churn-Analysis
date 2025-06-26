@@ -168,21 +168,18 @@ jobs:
     - name: Run app container
       run: docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
     
-    # Wait for health endpoint
+    # Wait for health endpoint (exit-code based)
     - name: Wait for health endpoint
       run: |
-        response=""
-        until [ "$response" = "200" ]; do
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-          echo "→ health returned $response, retrying…"
+        echo "Waiting for health endpoint…"
+        until curl --silent --fail http://localhost:8000/health; do
+          echo "…still waiting"
           sleep 1
         done
     
     # Smoke-test the health endpoint
     - name: Smoke-test health endpoint
-      run: |
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-        [ "$response" = "200" ]
+      run: curl --silent --fail http://localhost:8000/health
     
     # Tear down
     - name: Stop container
