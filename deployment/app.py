@@ -24,13 +24,15 @@ import joblib
 import sklearn
 from packaging import version
 
-# TestClient compatibility monkey patch
+# TestClient compatibility wrapper
 from fastapi.testclient import TestClient as _TestClient
-_orig_init = _TestClient.__init__
-def _patched_init(self, app, *args, **kwargs):
-    kwargs.pop('app', None)
-    return _orig_init(self, app, *args, **kwargs)
-_TestClient.__init__ = _patched_init
+
+class TestClient(_TestClient):
+    """Compatibility wrapper for TestClient to handle version differences."""
+    def __init__(self, app, **kwargs):
+        # Remove any conflicting parameters that might cause issues
+        kwargs.pop('app', None)
+        super().__init__(app, **kwargs)
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,8 +108,6 @@ class CustomerData(BaseModel):
     """
     CreditScore: int = Field(
         ..., 
-        ge=300, 
-        le=850, 
         description="Customer credit score (300-850)",
         example=650
     )
@@ -123,108 +123,112 @@ class CustomerData(BaseModel):
     )
     Age: int = Field(
         ..., 
-        ge=18, 
-        le=100, 
         description="Customer age (18-100)",
         example=35
     )
     Tenure: int = Field(
         ..., 
-        ge=0, 
-        le=10, 
         description="Years with bank (0-10)",
         example=5
     )
     Balance: float = Field(
         ..., 
-        ge=0, 
-        le=1000000, 
-        description="Account balance (0-1,000,000)",
+        description="Account balance (non-negative)",
         example=50000.0
     )
     NumOfProducts: int = Field(
         ..., 
-        ge=1, 
-        le=4, 
         description="Number of products (1-4)",
         example=2
     )
     HasCrCard: int = Field(
         ..., 
-        ge=0, 
-        le=1, 
         description="Has credit card (0 or 1)",
         example=1
     )
     IsActiveMember: int = Field(
         ..., 
-        ge=0, 
-        le=1, 
         description="Is active member (0 or 1)",
         example=1
     )
     EstimatedSalary: float = Field(
         ..., 
-        ge=0, 
-        le=500000, 
-        description="Estimated salary (0-500,000)",
+        description="Estimated salary (non-negative)",
         example=75000.0
     )
     
-    @validator('Geography', allow_reuse=True)
+    @validator('Geography')
     def validate_geography(cls, v):
-        if not isinstance(v, str):
-            raise ValueError('Geography must be a string')
-        v = v.strip().title()  # Normalize case
-        allowed_geographies = ['France', 'Spain', 'Germany']
-        if v not in allowed_geographies:
-            raise ValueError(f'Geography must be one of {allowed_geographies}, got: {v}')
+        if v not in ['France', 'Spain', 'Germany']:
+            raise ValueError('Geography must be one of: France, Spain, Germany')
         return v
-    
-    @validator('Gender', allow_reuse=True)
+
+    @validator('Gender')
     def validate_gender(cls, v):
-        if not isinstance(v, str):
-            raise ValueError('Gender must be a string')
-        v = v.strip().title()  # Normalize case
-        allowed_genders = ['Male', 'Female']
-        if v not in allowed_genders:
-            raise ValueError(f'Gender must be one of {allowed_genders}, got: {v}')
+        if v not in ['Male', 'Female']:
+            raise ValueError('Gender must be either Male or Female')
         return v
-    
-    @validator('CreditScore', allow_reuse=True)
+
+    @validator('CreditScore')
     def validate_credit_score(cls, v):
-        if not isinstance(v, int):
-            raise ValueError('CreditScore must be an integer')
-        if v < 300 or v > 850:
-            raise ValueError(f'CreditScore must be between 300 and 850, got: {v}')
+        if not 300 <= v <= 850:
+            raise ValueError('Credit score must be between 300 and 850')
         return v
     
-    @validator('Age', allow_reuse=True)
+    @validator('Age')
     def validate_age(cls, v):
         if not isinstance(v, int):
             raise ValueError('Age must be an integer')
         if v < 18 or v > 100:
-            raise ValueError(f'Age must be between 18 and 100, got: {v}')
+            raise ValueError('Age must be between 18 and 100')
         return v
     
-    @validator('Balance', 'EstimatedSalary', allow_reuse=True)
-    def validate_financial_fields(cls, v, field):
+    @validator('Balance')
+    def validate_balance(cls, v):
         if not isinstance(v, (int, float)):
-            raise ValueError(f'{field.name} must be a number')
+            raise ValueError('Balance must be a number')
         if v < 0:
-            raise ValueError(f'{field.name} cannot be negative, got: {v}')
-        if field.name == 'Balance' and v > 1000000:
+            raise ValueError('Balance must be non-negative')
+        if v > 1000000:
             raise ValueError(f'Balance cannot exceed 1,000,000, got: {v}')
-        if field.name == 'EstimatedSalary' and v > 500000:
+        return float(v)
+    
+    @validator('EstimatedSalary')
+    def validate_estimated_salary(cls, v):
+        if not isinstance(v, (int, float)):
+            raise ValueError('EstimatedSalary must be a number')
+        if v < 0:
+            raise ValueError('Estimated salary must be positive')
+        if v > 500000:
             raise ValueError(f'EstimatedSalary cannot exceed 500,000, got: {v}')
         return float(v)
     
-    @validator('HasCrCard', 'IsActiveMember', allow_reuse=True)
-    def validate_binary_fields(cls, v, field):
+    @validator('Tenure')
+    def validate_tenure(cls, v):
         if not isinstance(v, int):
-            raise ValueError(f'{field.name} must be an integer')
-        if v not in [0, 1]:
-            raise ValueError(f'{field.name} must be 0 or 1, got: {v}')
+            raise ValueError('Tenure must be an integer')
+        if v < 0 or v > 10:
+            raise ValueError('Tenure must be between 0 and 10')
+        return v
+    
+    @validator('NumOfProducts')
+    def validate_num_products(cls, v):
+        if not isinstance(v, int):
+            raise ValueError('NumOfProducts must be an integer')
+        if v < 1 or v > 4:
+            raise ValueError('Number of products must be between 1 and 4')
+        return v
+    
+    @validator('HasCrCard')
+    def validate_has_cr_card(cls, v):
+        if not isinstance(v, int) or v not in [0, 1]:
+            raise ValueError('HasCrCard must be 0 or 1')
+        return v
+    
+    @validator('IsActiveMember')
+    def validate_is_active_member(cls, v):
+        if not isinstance(v, int) or v not in [0, 1]:
+            raise ValueError('IsActiveMember must be 0 or 1')
         return v
 
     class Config:
@@ -250,7 +254,7 @@ class BatchCustomerData(BaseModel):
     """
     customers: List[CustomerData] = Field(..., description="List of customer data")
     
-    @validator('customers', allow_reuse=True)
+    @validator('customers')
     def validate_batch_size(cls, v):
         if len(v) > 1000:  # Limit batch size
             raise ValueError('Batch size cannot exceed 1000 customers')
@@ -266,7 +270,7 @@ class PredictionResponse(BaseModel):
     risk_level: str = Field(..., description="Risk level (Low, Medium, High)")
     confidence: float = Field(..., description="Model confidence score")
     timestamp: datetime = Field(..., description="Prediction timestamp")
-    model_version: str = Field(..., description="Model version used")
+    version: str = Field(..., description="Model version used")
 
 
 class BatchPredictionResponse(BaseModel):
@@ -282,8 +286,8 @@ class HealthResponse(BaseModel):
     Pydantic model for health check response.
     """
     status: str = Field(..., description="Service status")
-    model_loaded: bool = Field(..., description="Whether model is loaded")
-    model_version: str = Field(..., description="Current model version")
+    loaded: bool = Field(..., description="Whether model is loaded")
+    version: str = Field(..., description="Current model version")
     uptime: str = Field(..., description="Service uptime")
     timestamp: datetime = Field(..., description="Health check timestamp")
 
@@ -576,8 +580,8 @@ async def health_check(manager: ModelManager = Depends(get_model_manager)):
     """
     return HealthResponse(
         status="healthy" if model_loaded else "unhealthy",
-        model_loaded=model_loaded,
-        model_version=model_metadata.get('version', 'Unknown'),
+        loaded=model_loaded,
+        version=model_metadata.get('version', 'Unknown'),
         uptime=manager.get_uptime(),
         timestamp=datetime.now()
     )
@@ -651,7 +655,7 @@ async def predict_churn(
             risk_level=risk_level,
             confidence=confidence,
             timestamp=datetime.now(),
-            model_version=model_metadata.get('version', '1.0.0')
+            version=model_metadata.get('version', '1.0.0')
         )
         
         # Update metrics
@@ -725,7 +729,7 @@ async def predict_churn_batch(
                         "risk_level": risk_level,
                         "confidence": confidence,
                         "timestamp": datetime.now().isoformat(),
-                        "model_version": model_metadata.get('version', '1.0.0')
+                        "version": model_metadata.get('version', '1.0.0')
                     }
                     
                     predictions.append(pred_response)
@@ -751,7 +755,7 @@ async def predict_churn_batch(
                     "risk_level": risk_level,
                     "confidence": confidence,
                     "timestamp": datetime.now().isoformat(),
-                    "model_version": model_metadata.get('version', '1.0.0')
+                    "version": model_metadata.get('version', '1.0.0')
                 }
                 
                 predictions.append(pred_response)
@@ -784,7 +788,7 @@ async def predict_churn_batch(
         return {
             "predictions": predictions,
             "summary": summary,
-            "model_loaded": model_loaded,
+            "loaded": model_loaded,
             "model_name": model_metadata.get('name', 'unknown'),
             "version": model_metadata.get('version', '1.0.0')
         }

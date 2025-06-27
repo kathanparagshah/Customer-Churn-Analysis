@@ -168,13 +168,13 @@ jobs:
     - name: Run app container
       run: docker run -d --rm -p 8000:8000 --name churn-smoke-test churn-app:latest
     
-    # Wait for health endpoint (exit-code based)
+    # Wait for health endpoint (status-code based)
     - name: Wait for health endpoint
       run: |
         echo "Waiting for health endpoint…"
         timeout=60
         elapsed=0
-        until curl --silent --fail http://localhost:8000/health; do
+        until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)" = "200" ]; do
           echo "…still waiting ($elapsed/$timeout seconds)"
           sleep 2
           elapsed=$((elapsed + 2))
@@ -195,13 +195,29 @@ jobs:
         
         # Validate JSON structure
         echo "$response" | jq -e '.status == "healthy"' > /dev/null
-        echo "$response" | jq -e '.model_loaded == true' > /dev/null
+        echo "$response" | jq -e '.loaded == true' > /dev/null
         echo "✅ Health endpoint validation passed"
     
-    # Test prediction endpoint with valid data
-    - name: Test prediction endpoint
+    # Smoke test predict endpoint with status code validation
+    - name: Smoke test predict endpoint
       run: |
-        echo "Testing prediction endpoint..."
+        echo "Smoke testing prediction endpoint..."
+        status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -X POST http://localhost:8000/predict \
+          -H 'Content-Type: application/json' \
+          -d '{"CreditScore":650,"Geography":"France","Gender":"Male","Age":30,"Tenure":3,"Balance":10000,"NumOfProducts":1,"HasCrCard":1,"IsActiveMember":1,"EstimatedSalary":50000}')
+        
+        if [ "$status_code" = "200" ]; then
+          echo "✅ Predict endpoint smoke test passed (HTTP $status_code)"
+        else
+          echo "❌ Predict endpoint smoke test failed (HTTP $status_code)"
+          exit 1
+        fi
+    
+    # Test prediction endpoint with full response validation
+    - name: Test prediction endpoint response
+      run: |
+        echo "Testing prediction endpoint response structure..."
         response=$(curl --silent --fail -X POST http://localhost:8000/predict \
           -H "Content-Type: application/json" \
           -d '{
@@ -223,8 +239,8 @@ jobs:
         echo "$response" | jq -e '.churn_prediction' > /dev/null
         echo "$response" | jq -e '.risk_level' > /dev/null
         echo "$response" | jq -e '.confidence' > /dev/null
-        echo "$response" | jq -e '.model_version' > /dev/null
-        echo "✅ Prediction endpoint validation passed"
+        echo "$response" | jq -e '.version' > /dev/null
+        echo "✅ Prediction endpoint response validation passed"
     
     # Test prediction endpoint with invalid data (should return 422)
     - name: Test prediction endpoint validation

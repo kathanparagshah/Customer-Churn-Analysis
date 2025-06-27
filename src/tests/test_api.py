@@ -24,8 +24,8 @@ import numpy as np
 import pandas as pd
 import joblib
 
-from fastapi.testclient import TestClient
 from fastapi import status
+from fastapi.testclient import TestClient
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import warnings
@@ -33,19 +33,22 @@ warnings.filterwarnings('ignore')
 
 # Import API components
 import sys
-sys.path.append(str(Path(__file__).parent.parent.parent / 'deployment'))
+deployment_path = str(Path(__file__).parent.parent.parent / 'deployment')
+if deployment_path not in sys.path:
+    sys.path.insert(0, deployment_path)
 
 try:
     from app import (
-        app, CustomerData, BatchPredictionRequest, PredictionResponse,
+        app, CustomerData, BatchCustomerData, PredictionResponse,
         BatchPredictionResponse, ModelManager, get_model_manager
     )
-except ImportError:
+    print("API module imported successfully")
+except ImportError as e:
     # Handle case where app module is not available
     app = None
     CustomerData = None
     ModelManager = None
-    print("Warning: API module not found. Some tests will be skipped.")
+    print(f"Warning: API module not found. Import error: {e}. Some tests will be skipped.")
 
 
 class TestCustomerDataValidation:
