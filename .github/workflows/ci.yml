@@ -236,11 +236,12 @@ jobs:
         echo "Prediction response: $response"
         
         # Validate prediction response structure
-        echo "$response" | jq -e '.churn_probability' > /dev/null
-        echo "$response" | jq -e '.churn_prediction' > /dev/null
-        echo "$response" | jq -e '.risk_level' > /dev/null
-        echo "$response" | jq -e '.confidence' > /dev/null
-        echo "$response" | jq -e '.version' > /dev/null
+        echo "$response" | jq -e '.churn_probability' > /dev/null || { echo "❌ Missing churn_probability field"; exit 1; }
+        echo "$response" | jq -e '.churn_prediction' > /dev/null || { echo "❌ Missing churn_prediction field"; exit 1; }
+        echo "$response" | jq -e '.risk_level' > /dev/null || { echo "❌ Missing risk_level field"; exit 1; }
+        echo "$response" | jq -e '.confidence' > /dev/null || { echo "❌ Missing confidence field"; exit 1; }
+        echo "$response" | jq -e '.timestamp' > /dev/null || { echo "❌ Missing timestamp field"; exit 1; }
+        echo "$response" | jq -e '.version' > /dev/null || { echo "❌ Missing version field"; exit 1; }
         echo "✅ Prediction endpoint response validation passed"
     
     # Test prediction endpoint with invalid data (should return 422)
