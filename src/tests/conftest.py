@@ -452,6 +452,23 @@ def cleanup_temp_files():
     pass
 
 
+@pytest.fixture(autouse=True)
+def reset_model_state(request):
+    """Reset model state before each test to ensure isolation."""
+    # Only reset for API tests to avoid interfering with integration tests
+    if 'test_api.py' in str(request.fspath):
+        try:
+            # Reset global model state
+            import sys
+            if 'deployment.app' in sys.modules:
+                from deployment.app import get_model_manager
+                manager = get_model_manager()
+                manager.unload_model()
+        except (ImportError, AttributeError):
+            pass
+    yield
+
+
 # Test reporting
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """Add custom information to test summary."""

@@ -29,6 +29,7 @@ from sklearn.metrics import (
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 import sklearn
 import xgboost as xgb
+from sklearn.base import BaseEstimator
 import joblib
 import warnings
 from pathlib import Path
@@ -38,29 +39,10 @@ import time
 
 warnings.filterwarnings('ignore')
 
-# XGBoost sklearn compatibility fix for scikit-learn 1.6+
-def _xgb_sklearn_tags(self):
-    """Provide sklearn tags for XGBoost compatibility."""
-    return {
-        'requires_y': True,
-        'requires_fit': True,
-        'requires_positive_X': False,
-        'requires_positive_y': False,
-        'X_types': ['2darray'],
-        'y_types': ['1dlabels'],
-        'poor_score': True,
-        'no_validation': False,
-        'multiclass_only': False,
-        'allow_nan': False,
-        'stateless': False,
-        'binary_only': False,
-        '_xfail_checks': {},
-        'multiclass': True,
-        'multilabel': False
-    }
-
-# Always override the __sklearn_tags__ method on XGBClassifier
-xgb.XGBClassifier.__sklearn_tags__ = _xgb_sklearn_tags
+# XGBoost sklearn compatibility wrapper for scikit-learn 1.7+
+class XGBClassifierWrapper(xgb.XGBClassifier, BaseEstimator):
+    """Wrapper for XGBClassifier to satisfy scikit-learn 1.7's __sklearn_tags__ requirement."""
+    pass
 
 
 class ChurnPredictor:
@@ -393,7 +375,7 @@ class ChurnPredictor:
         self.models['random_forest'] = grid_search.best_estimator_
         return grid_search.best_estimator_
     
-    def _train_xgboost(self, X_train: pd.DataFrame, y_train: pd.Series) -> xgb.XGBClassifier:
+    def _train_xgboost(self, X_train: pd.DataFrame, y_train: pd.Series) -> XGBClassifierWrapper:
         """
         Train XGBoost with hyperparameter tuning.
         """
@@ -411,7 +393,7 @@ class ChurnPredictor:
         }
         
         # Grid search with cross-validation
-        xgb_model = xgb.XGBClassifier(
+        xgb_model = XGBClassifierWrapper(
             random_state=self.random_state,
             eval_metric='logloss',
             enable_categorical=False

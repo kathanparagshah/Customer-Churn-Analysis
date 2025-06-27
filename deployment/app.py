@@ -24,15 +24,7 @@ import joblib
 import sklearn
 from packaging import version
 
-# TestClient compatibility wrapper
-from fastapi.testclient import TestClient as _TestClient
-
-class TestClient(_TestClient):
-    """Compatibility wrapper for TestClient to handle version differences."""
-    def __init__(self, app, **kwargs):
-        # Remove any conflicting parameters that might cause issues
-        kwargs.pop('app', None)
-        super().__init__(app, **kwargs)
+# TestClient is only needed for testing, not for the actual API
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,6 +92,10 @@ label_encoders = {}
 feature_names = []
 model_metadata = {}
 model_loaded = False
+
+def is_model_loaded():
+    """Check if the model is loaded."""
+    return model_loaded
 
 
 class CustomerData(BaseModel):
@@ -271,6 +267,11 @@ class PredictionResponse(BaseModel):
     confidence: float = Field(..., description="Model confidence score")
     timestamp: datetime = Field(..., description="Prediction timestamp")
     version: str = Field(..., description="Model version used")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class BatchPredictionResponse(BaseModel):
@@ -290,6 +291,12 @@ class HealthResponse(BaseModel):
     version: str = Field(..., description="Current model version")
     uptime: str = Field(..., description="Service uptime")
     timestamp: datetime = Field(..., description="Health check timestamp")
+    model_status: Dict[str, Any] = Field(..., description="Model status information")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class ModelManager:
@@ -299,29 +306,19 @@ class ModelManager:
     
     def __init__(self):
         self.start_time = datetime.now()
-        try:
-            # existing load logic (opening pickle, setting model, scaler, etc.)
-            self.model_path = Path(__file__).resolve().parent / 'models' / 'churn_model.pkl'
-            model_package = joblib.load(self.model_path)
-            self.model = model_package['model']
-            self.scaler = model_package.get('scaler')
-            self.feature_names = model_package['feature_names']
-            self.label_encoders = model_package.get('label_encoders', {})
-            self.model_name = model_package.get('model_name', 'unknown')
-            self.version = model_package.get('version', '1.0.0')
-            self.training_date = model_package.get('training_date', 'unknown')
-            self.is_loaded = True
-        except FileNotFoundError:
-            logger.warning(f"Model file not found at {self.model_path}; running without a model for tests")
-            self.model = None
-            self.scaler = None
-            self.feature_names = []
-            self.label_encoders = {}
-            self.model_name = 'unknown'
-            self.version = '1.0.0'
-            self.training_date = 'unknown'
-            self.is_loaded = False
+        # Initialize all attributes to None
+        self.model = None
+        self.scaler = None
+        self.feature_names = None
+        self.label_encoders = None
+        self.model_name = None
+        self.version = None
+        self.training_date = None
+        self.is_loaded = False
         self.performance_metrics = {}
+        
+        # Set default model path for backward compatibility
+        self.model_path = Path(__file__).resolve().parent / 'models' / 'churn_model.pkl'
     
     def load_model(self, model_path: str) -> bool:
         """
@@ -331,63 +328,84 @@ class ModelManager:
             model_path: Path to the model file
         
         Returns:
-            bool: True if model loaded successfully, False otherwise
+            bool: True if model loaded successfully
+            
+        Raises:
+            FileNotFoundError: If the model file doesn't exist
         """
         global model, scaler, label_encoders, feature_names, model_metadata, model_loaded
         
-        try:
-            model_file_path = Path(model_path)
-            if not model_file_path.exists():
-                logger.error(f"Model file not found: {model_file_path}")
-                return False
-            
-            logger.info(f"Loading model from {model_file_path}")
-            
-            # Load model package
-            model_package = joblib.load(model_file_path)
-            
-            # Validate scikit-learn version compatibility
-            self._validate_sklearn_version(model_package)
-            
-            # Set instance variables
-            self.model = model_package['model']
-            self.scaler = model_package.get('scaler')
-            self.label_encoders = model_package.get('label_encoders', {})
-            self.feature_names = model_package['feature_names']
-            
-            # Also set global variables for backward compatibility
-            model = self.model
-            scaler = self.scaler
-            label_encoders = self.label_encoders
-            feature_names = self.feature_names
-            
-            # Set instance metadata attributes
-            self.model_name = model_package.get('model_name', 'Unknown')
-            self.version = model_package.get('version', '1.0.0')
-            self.training_date = model_package.get('training_date', 'Unknown')
-            self.performance_metrics = model_package.get('performance_metrics', {})
-            
-            # Extract model metadata for global variable
-            model_metadata = {
-                'model_name': self.model_name,
-                'version': self.version,
-                'training_date': self.training_date,
-                'performance_metrics': self.performance_metrics
-            }
-            
-            # Set loaded flags
-            self.is_loaded = True
-            model_loaded = True
-            
-            logger.info(f"Model loaded successfully: {model_metadata['model_name']}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error loading model: {str(e)}")
-            logger.error(traceback.format_exc())
-            return False
+        model_file_path = Path(model_path)
+        if not model_file_path.exists():
+            raise FileNotFoundError(f"Model file not found: {model_file_path}")
+        
+        logger.info(f"Loading model from {model_file_path}")
+        
+        # Load model package
+        pkg = joblib.load(model_file_path)
+        
+        # Validate scikit-learn version compatibility
+        self._validate_sklearn_compatibility(pkg)
+        
+        # Populate instance variables from package
+        self.model = pkg['model']
+        self.scaler = pkg.get('scaler')
+        self.feature_names = pkg['feature_names']
+        self.label_encoders = pkg.get('label_encoders', {})
+        self.model_name = pkg.get('model_name', 'Unknown')
+        self.version = pkg.get('version', '1.0.0')
+        self.training_date = pkg.get('training_date', 'Unknown')
+        self.performance_metrics = pkg.get('performance_metrics', {})
+        
+        # Also set global variables for backward compatibility
+        model = self.model
+        scaler = self.scaler
+        label_encoders = self.label_encoders
+        feature_names = self.feature_names
+        
+        # Extract model metadata for global variable
+        model_metadata = {
+            'model_name': self.model_name,
+            'version': self.version,
+            'training_date': self.training_date,
+            'performance_metrics': self.performance_metrics
+        }
+        
+        # Set loaded flags
+        self.is_loaded = True
+        model_loaded = True
+        
+        logger.info(f"Model loaded successfully: {model_metadata['model_name']}")
+        return True
     
-    def _validate_sklearn_version(self, model_package: Dict[str, Any]) -> None:
+    def unload_model(self) -> None:
+        """
+        Unload the current model and reset all state.
+        """
+        global model, scaler, label_encoders, feature_names, model_metadata, model_loaded
+        
+        # Reset global variables
+        model = None
+        scaler = None
+        label_encoders = None
+        feature_names = None
+        model_metadata = None
+        model_loaded = False
+        
+        # Reset instance attributes
+        self.model = None
+        self.scaler = None
+        self.feature_names = None
+        self.label_encoders = None
+        self.model_name = None
+        self.version = None
+        self.training_date = None
+        self.is_loaded = False
+        self.performance_metrics = {}
+        
+        logger.info("Model unloaded successfully")
+    
+    def _validate_sklearn_compatibility(self, model_package: Dict[str, Any]) -> None:
         """
         Validate scikit-learn version compatibility between training and runtime.
         
@@ -439,6 +457,85 @@ class ModelManager:
                 f"Current runtime version: {current_sklearn_version}. "
                 f"Consider retraining the model with version metadata."
             )
+    
+    def preprocess_customer_data(self, customer_data: dict) -> np.ndarray:
+        """
+        Preprocess customer data for prediction.
+        
+        Args:
+            customer_data: Dictionary containing customer data
+            
+        Returns:
+            np.ndarray: Preprocessed feature array
+        """
+        # Build a one-row pandas DataFrame from customer_data
+        df = pd.DataFrame([customer_data])
+        
+        # Apply label encoding for categorical variables
+        for col, encoder in self.label_encoders.items():
+            if col in df.columns:
+                try:
+                    df[col] = encoder.transform(df[col].astype(str))
+                except ValueError as e:
+                    logger.warning(f"Unknown category in {col}: {df[col].iloc[0]}. Using default encoding.")
+                    # Handle unknown categories by using the most frequent class
+                    df[col] = encoder.transform([encoder.classes_[0]])
+        
+        # If feature_names is set, reorder columns to match
+        if self.feature_names is not None:
+            df = df[self.feature_names]
+        
+        # Return scaler.transform(df.values) as numpy array
+        return self.scaler.transform(df.values)
+    
+    def predict_single(self, customer_data: dict) -> dict:
+        """
+        Predict churn for a single customer.
+        
+        Args:
+            customer_data: Dictionary containing customer data
+            
+        Returns:
+            dict: Prediction results with churn_probability, churn_prediction, risk_level, confidence
+        """
+        # Preprocess the data
+        X = self.preprocess_customer_data(customer_data)
+        
+        # Compute churn_probability
+        churn_probability = float(self.model.predict_proba(X)[0][1])
+        
+        # Compute churn_prediction
+        churn_prediction = bool(self.model.predict(X)[0])
+        
+        # Define risk_level
+        if churn_probability >= 0.66:
+            risk_level = "High"
+        elif churn_probability >= 0.33:
+            risk_level = "Medium"
+        else:
+            risk_level = "Low"
+        
+        # Define confidence
+        confidence = max(churn_probability, 1 - churn_probability)
+        
+        return {
+            'churn_probability': churn_probability,
+            'churn_prediction': churn_prediction,
+            'risk_level': risk_level,
+            'confidence': confidence
+        }
+    
+    def predict_batch(self, customers: list[dict]) -> list[dict]:
+        """
+        Predict churn for multiple customers.
+        
+        Args:
+            customers: List of customer data dictionaries
+            
+        Returns:
+            list[dict]: List of prediction results
+        """
+        return [self.predict_single(c) for c in customers]
     
     def get_uptime(self) -> str:
         """
@@ -540,10 +637,8 @@ async def startup_event():
     global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
     
     logger.info("Starting Churn Prediction API...")
-    success = model_manager.load_model(str(model_manager.model_path))
-    if not success:
-        logger.error("Failed to load model on startup")
-    else:
+    try:
+        model_manager.load_model(str(model_manager.model_path))
         # Ensure global variables are properly set
         model = model_manager.model
         scaler = model_manager.scaler
@@ -558,9 +653,15 @@ async def startup_event():
         }
         logger.info(f"API started successfully with {len(feature_names)} features")
         logger.info(f"Feature names: {feature_names}")
+    except FileNotFoundError as e:
+        logger.warning(f"Model file not found at startup: {e}. Running without a model for tests.")
+        model_loaded = False
+    except Exception as e:
+        logger.error(f"Failed to load model on startup: {e}")
+        model_loaded = False
 
 
-@app.get("/", response_model=Dict[str, str])
+@app.get("/", response_model=Dict[str, Any])
 async def root():
     """
     Root endpoint with API information.
@@ -569,7 +670,17 @@ async def root():
         "message": "Bank Churn Prediction API",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "status": "healthy",
+        "endpoints": [
+            "/",
+            "/health",
+            "/predict",
+            "/batch_predict",
+            "/model/info",
+            "/docs",
+            "/redoc"
+        ]
     }
 
 
@@ -578,12 +689,20 @@ async def health_check(manager: ModelManager = Depends(get_model_manager)):
     """
     Health check endpoint.
     """
+    model_status = {
+        "loaded": model_loaded,
+        "model_type": model.__class__.__name__ if model else None,
+        "features_count": len(feature_names) if feature_names else 0,
+        "preprocessing_ready": scaler is not None and len(label_encoders) > 0
+    }
+    
     return HealthResponse(
         status="healthy" if model_loaded else "unhealthy",
         loaded=model_loaded,
         version=model_metadata.get('version', 'Unknown'),
         uptime=manager.get_uptime(),
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
+        model_status=model_status
     )
 
 
@@ -592,7 +711,7 @@ async def model_info():
     """
     Get model information and metadata.
     """
-    if not model_loaded:
+    if not is_model_loaded():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded"
@@ -623,7 +742,7 @@ async def predict_churn(
     Returns:
         PredictionResponse: Prediction result
     """
-    if not model_loaded:
+    if not is_model_loaded():
         if ERROR_COUNTER:
             ERROR_COUNTER.inc()
         raise HTTPException(
@@ -666,7 +785,7 @@ async def predict_churn(
         background_tasks.add_task(
             log_prediction,
             customer_data.dict(),
-            response.dict()
+            json.loads(response.json())
         )
         
         return response
@@ -698,7 +817,7 @@ async def predict_churn_batch(
         dict: Batch prediction results
     """
     try:
-        if not model_loaded:
+        if not is_model_loaded():
             if ERROR_COUNTER:
                 ERROR_COUNTER.inc()
             raise HTTPException(
@@ -794,10 +913,14 @@ async def predict_churn_batch(
         }
         
     except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error(tb)
-        return {"detail": tb}
+        if ERROR_COUNTER:
+            ERROR_COUNTER.inc()
+        logger.error(f"Error in batch prediction: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch prediction error: {str(e)}"
+        )
 
 
 @app.get("/metrics")
@@ -814,14 +937,14 @@ async def reload_model(manager: ModelManager = Depends(get_model_manager)):
     Reload the model (useful for model updates).
     """
     try:
-        success = manager.load_model()
-        if success:
-            return {"message": "Model reloaded successfully", "timestamp": datetime.now()}
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to reload model"
-            )
+        manager.load_model(str(manager.model_path))
+        return {"message": "Model reloaded successfully", "timestamp": datetime.now().isoformat()}
+    except FileNotFoundError as e:
+        logger.error(f"Model file not found during reload: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model file not found: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Error reloading model: {str(e)}")
         raise HTTPException(
