@@ -38,6 +38,31 @@ import time
 
 warnings.filterwarnings('ignore')
 
+# XGBoost sklearn compatibility fix for scikit-learn 1.6+
+if not hasattr(xgb.XGBClassifier, '__sklearn_tags__'):
+    def _xgb_sklearn_tags(self):
+        """Provide sklearn tags for XGBoost compatibility."""
+        return {
+            'requires_y': True,
+            'requires_fit': True,
+            'requires_positive_X': False,
+            'requires_positive_y': False,
+            'X_types': ['2darray'],
+            'y_types': ['1dlabels'],
+            'poor_score': True,
+            'no_validation': False,
+            'multiclass_only': False,
+            'allow_nan': False,
+            'stateless': False,
+            'binary_only': False,
+            '_xfail_checks': {},
+            'multiclass': True,
+            'multilabel': False
+        }
+    
+    # Monkey patch the method
+    xgb.XGBClassifier.__sklearn_tags__ = _xgb_sklearn_tags
+
 
 class ChurnPredictor:
     """
