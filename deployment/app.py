@@ -14,6 +14,7 @@ import sys
 import json
 import logging
 import traceback
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
@@ -63,13 +64,51 @@ except Exception as e:
     PREDICTION_LATENCY = None
     ERROR_COUNTER = None
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI app startup and shutdown.
+    """
+    global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
+    
+    # Startup
+    logger.info("Starting Churn Prediction API...")
+    try:
+        model_manager.load_model(str(model_manager.model_path))
+        # Ensure global variables are properly set
+        model = model_manager.model
+        scaler = model_manager.scaler
+        label_encoders = model_manager.label_encoders
+        feature_names = model_manager.feature_names
+        model_loaded = True
+        model_metadata = {
+            'model_name': model_manager.model_name,
+            'version': model_manager.version,
+            'training_date': model_manager.training_date,
+            'performance_metrics': model_manager.performance_metrics
+        }
+        logger.info(f"API started successfully with {len(feature_names)} features")
+        logger.info(f"Feature names: {feature_names}")
+    except FileNotFoundError as e:
+        logger.warning(f"Model file not found at startup: {e}. Running without a model for tests.")
+        model_loaded = False
+    except Exception as e:
+        logger.error(f"Failed to load model on startup: {e}")
+        model_loaded = False
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Churn Prediction API...")
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Bank Churn Prediction API",
     description="API for predicting customer churn using machine learning models",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -629,36 +668,7 @@ def calculate_confidence(probability: float) -> float:
     return 2 * abs(probability - 0.5)
 
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Load model on startup.
-    """
-    global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
-    
-    logger.info("Starting Churn Prediction API...")
-    try:
-        model_manager.load_model(str(model_manager.model_path))
-        # Ensure global variables are properly set
-        model = model_manager.model
-        scaler = model_manager.scaler
-        label_encoders = model_manager.label_encoders
-        feature_names = model_manager.feature_names
-        model_loaded = True
-        model_metadata = {
-            'model_name': model_manager.model_name,
-            'version': model_manager.version,
-            'training_date': model_manager.training_date,
-            'performance_metrics': model_manager.performance_metrics
-        }
-        logger.info(f"API started successfully with {len(feature_names)} features")
-        logger.info(f"Feature names: {feature_names}")
-    except FileNotFoundError as e:
-        logger.warning(f"Model file not found at startup: {e}. Running without a model for tests.")
-        model_loaded = False
-    except Exception as e:
-        logger.error(f"Failed to load model on startup: {e}")
-        model_loaded = False
+
 
 
 @app.get("/", response_model=Dict[str, Any])
