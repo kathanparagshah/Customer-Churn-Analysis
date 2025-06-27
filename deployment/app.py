@@ -21,6 +21,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import joblib
+import sklearn
+from packaging import version
 
 # TestClient compatibility monkey patch
 from fastapi.testclient import TestClient as _TestClient
@@ -100,31 +102,129 @@ model_loaded = False
 
 class CustomerData(BaseModel):
     """
-    Pydantic model for customer data input.
+    Pydantic model for customer data input with enhanced validation.
     """
-    CreditScore: int = Field(..., ge=300, le=850, description="Customer credit score (300-850)")
-    Geography: str = Field(..., description="Customer geography (France, Spain, Germany)")
-    Gender: str = Field(..., description="Customer gender (Male, Female)")
-    Age: int = Field(..., ge=18, le=100, description="Customer age (18-100)")
-    Tenure: int = Field(..., ge=0, le=10, description="Years with bank (0-10)")
-    Balance: float = Field(..., ge=0, description="Account balance")
-    NumOfProducts: int = Field(..., ge=1, le=4, description="Number of products (1-4)")
-    HasCrCard: int = Field(..., ge=0, le=1, description="Has credit card (0 or 1)")
-    IsActiveMember: int = Field(..., ge=0, le=1, description="Is active member (0 or 1)")
-    EstimatedSalary: float = Field(..., ge=0, description="Estimated salary")
+    CreditScore: int = Field(
+        ..., 
+        ge=300, 
+        le=850, 
+        description="Customer credit score (300-850)",
+        example=650
+    )
+    Geography: str = Field(
+        ..., 
+        description="Customer geography (France, Spain, Germany)",
+        example="France"
+    )
+    Gender: str = Field(
+        ..., 
+        description="Customer gender (Male, Female)",
+        example="Female"
+    )
+    Age: int = Field(
+        ..., 
+        ge=18, 
+        le=100, 
+        description="Customer age (18-100)",
+        example=35
+    )
+    Tenure: int = Field(
+        ..., 
+        ge=0, 
+        le=10, 
+        description="Years with bank (0-10)",
+        example=5
+    )
+    Balance: float = Field(
+        ..., 
+        ge=0, 
+        le=1000000, 
+        description="Account balance (0-1,000,000)",
+        example=50000.0
+    )
+    NumOfProducts: int = Field(
+        ..., 
+        ge=1, 
+        le=4, 
+        description="Number of products (1-4)",
+        example=2
+    )
+    HasCrCard: int = Field(
+        ..., 
+        ge=0, 
+        le=1, 
+        description="Has credit card (0 or 1)",
+        example=1
+    )
+    IsActiveMember: int = Field(
+        ..., 
+        ge=0, 
+        le=1, 
+        description="Is active member (0 or 1)",
+        example=1
+    )
+    EstimatedSalary: float = Field(
+        ..., 
+        ge=0, 
+        le=500000, 
+        description="Estimated salary (0-500,000)",
+        example=75000.0
+    )
     
     @validator('Geography', allow_reuse=True)
     def validate_geography(cls, v):
+        if not isinstance(v, str):
+            raise ValueError('Geography must be a string')
+        v = v.strip().title()  # Normalize case
         allowed_geographies = ['France', 'Spain', 'Germany']
         if v not in allowed_geographies:
-            raise ValueError(f'Geography must be one of {allowed_geographies}')
+            raise ValueError(f'Geography must be one of {allowed_geographies}, got: {v}')
         return v
     
     @validator('Gender', allow_reuse=True)
     def validate_gender(cls, v):
+        if not isinstance(v, str):
+            raise ValueError('Gender must be a string')
+        v = v.strip().title()  # Normalize case
         allowed_genders = ['Male', 'Female']
         if v not in allowed_genders:
-            raise ValueError(f'Gender must be one of {allowed_genders}')
+            raise ValueError(f'Gender must be one of {allowed_genders}, got: {v}')
+        return v
+    
+    @validator('CreditScore', allow_reuse=True)
+    def validate_credit_score(cls, v):
+        if not isinstance(v, int):
+            raise ValueError('CreditScore must be an integer')
+        if v < 300 or v > 850:
+            raise ValueError(f'CreditScore must be between 300 and 850, got: {v}')
+        return v
+    
+    @validator('Age', allow_reuse=True)
+    def validate_age(cls, v):
+        if not isinstance(v, int):
+            raise ValueError('Age must be an integer')
+        if v < 18 or v > 100:
+            raise ValueError(f'Age must be between 18 and 100, got: {v}')
+        return v
+    
+    @validator('Balance', 'EstimatedSalary', allow_reuse=True)
+    def validate_financial_fields(cls, v, field):
+        if not isinstance(v, (int, float)):
+            raise ValueError(f'{field.name} must be a number')
+        if v < 0:
+            raise ValueError(f'{field.name} cannot be negative, got: {v}')
+        if field.name == 'Balance' and v > 1000000:
+            raise ValueError(f'Balance cannot exceed 1,000,000, got: {v}')
+        if field.name == 'EstimatedSalary' and v > 500000:
+            raise ValueError(f'EstimatedSalary cannot exceed 500,000, got: {v}')
+        return float(v)
+    
+    @validator('HasCrCard', 'IsActiveMember', allow_reuse=True)
+    def validate_binary_fields(cls, v, field):
+        if not isinstance(v, int):
+            raise ValueError(f'{field.name} must be an integer')
+        if v not in [0, 1]:
+            raise ValueError(f'{field.name} must be 0 or 1, got: {v}')
         return v
 
     class Config:
@@ -242,6 +342,9 @@ class ModelManager:
             # Load model package
             model_package = joblib.load(model_file_path)
             
+            # Validate scikit-learn version compatibility
+            self._validate_sklearn_version(model_package)
+            
             # Set instance variables
             self.model = model_package['model']
             self.scaler = model_package.get('scaler')
@@ -279,6 +382,59 @@ class ModelManager:
             logger.error(f"Error loading model: {str(e)}")
             logger.error(traceback.format_exc())
             return False
+    
+    def _validate_sklearn_version(self, model_package: Dict[str, Any]) -> None:
+        """
+        Validate scikit-learn version compatibility between training and runtime.
+        
+        Args:
+            model_package: Loaded model package dictionary
+        """
+        current_sklearn_version = sklearn.__version__
+        
+        # Try to get training sklearn version from model metadata
+        training_sklearn_version = model_package.get('sklearn_version')
+        
+        if training_sklearn_version:
+            try:
+                current_ver = version.parse(current_sklearn_version)
+                training_ver = version.parse(training_sklearn_version)
+                
+                # Check for major version differences
+                if current_ver.major != training_ver.major:
+                    logger.error(
+                        f"Major scikit-learn version mismatch! "
+                        f"Model trained with {training_sklearn_version}, "
+                        f"runtime using {current_sklearn_version}. "
+                        f"This may cause prediction errors."
+                    )
+                    raise ValueError(
+                        f"Incompatible scikit-learn versions: "
+                        f"training={training_sklearn_version}, runtime={current_sklearn_version}"
+                    )
+                
+                # Check for minor version differences (warning only)
+                elif current_ver.minor != training_ver.minor:
+                    logger.warning(
+                        f"Minor scikit-learn version mismatch detected. "
+                        f"Model trained with {training_sklearn_version}, "
+                        f"runtime using {current_sklearn_version}. "
+                        f"Consider retraining the model for optimal compatibility."
+                    )
+                
+                else:
+                    logger.info(
+                        f"Scikit-learn version compatibility confirmed: {current_sklearn_version}"
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Could not parse version strings: {e}")
+        else:
+            logger.warning(
+                f"No sklearn version metadata found in model. "
+                f"Current runtime version: {current_sklearn_version}. "
+                f"Consider retraining the model with version metadata."
+            )
     
     def get_uptime(self) -> str:
         """

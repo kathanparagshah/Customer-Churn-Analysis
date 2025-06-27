@@ -172,14 +172,99 @@ jobs:
     - name: Wait for health endpoint
       run: |
         echo "Waiting for health endpoint…"
+        timeout=60
+        elapsed=0
         until curl --silent --fail http://localhost:8000/health; do
-          echo "…still waiting"
-          sleep 1
+          echo "…still waiting ($elapsed/$timeout seconds)"
+          sleep 2
+          elapsed=$((elapsed + 2))
+          if [ $elapsed -ge $timeout ]; then
+            echo "Health check timeout after $timeout seconds"
+            docker logs churn-smoke-test
+            exit 1
+          fi
         done
+        echo "Health endpoint is ready!"
     
-    # Smoke-test the health endpoint
-    - name: Smoke-test health endpoint
-      run: curl --silent --fail http://localhost:8000/health
+    # Test health endpoint and validate response
+    - name: Test health endpoint
+      run: |
+        echo "Testing health endpoint..."
+        response=$(curl --silent --fail http://localhost:8000/health)
+        echo "Health response: $response"
+        
+        # Validate JSON structure
+        echo "$response" | jq -e '.status == "healthy"' > /dev/null
+        echo "$response" | jq -e '.model_loaded == true' > /dev/null
+        echo "✅ Health endpoint validation passed"
+    
+    # Test prediction endpoint with valid data
+    - name: Test prediction endpoint
+      run: |
+        echo "Testing prediction endpoint..."
+        response=$(curl --silent --fail -X POST http://localhost:8000/predict \
+          -H "Content-Type: application/json" \
+          -d '{
+            "CreditScore": 650,
+            "Geography": "France",
+            "Gender": "Female",
+            "Age": 35,
+            "Tenure": 5,
+            "Balance": 50000.0,
+            "NumOfProducts": 2,
+            "HasCrCard": 1,
+            "IsActiveMember": 1,
+            "EstimatedSalary": 75000.0
+          }')
+        echo "Prediction response: $response"
+        
+        # Validate prediction response structure
+        echo "$response" | jq -e '.churn_probability' > /dev/null
+        echo "$response" | jq -e '.churn_prediction' > /dev/null
+        echo "$response" | jq -e '.risk_level' > /dev/null
+        echo "$response" | jq -e '.confidence' > /dev/null
+        echo "$response" | jq -e '.model_version' > /dev/null
+        echo "✅ Prediction endpoint validation passed"
+    
+    # Test prediction endpoint with invalid data (should return 422)
+    - name: Test prediction endpoint validation
+      run: |
+        echo "Testing prediction endpoint validation..."
+        http_code=$(curl --silent --write-out "%{http_code}" --output /dev/null \
+          -X POST http://localhost:8000/predict \
+          -H "Content-Type: application/json" \
+          -d '{"CreditScore": 999, "Geography": "InvalidCountry"}')
+        
+        if [ "$http_code" = "422" ]; then
+          echo "✅ Validation correctly rejected invalid data (HTTP $http_code)"
+        else
+          echo "❌ Expected HTTP 422 for invalid data, got HTTP $http_code"
+          exit 1
+        fi
+    
+    # Check container logs for sklearn version warnings
+    - name: Validate sklearn version compatibility
+      run: |
+        echo "Checking container logs for sklearn version warnings..."
+        logs=$(docker logs churn-smoke-test 2>&1)
+        
+        # Check if there are any InconsistentVersionWarning messages
+        if echo "$logs" | grep -i "InconsistentVersionWarning\|version.*mismatch\|version.*incompatible"; then
+          echo "❌ Found sklearn version warnings in container logs:"
+          echo "$logs" | grep -i "InconsistentVersionWarning\|version.*mismatch\|version.*incompatible"
+          exit 1
+        else
+          echo "✅ No sklearn version warnings found"
+        fi
+        
+        # Check for successful model loading
+        if echo "$logs" | grep -q "Model loaded successfully"; then
+          echo "✅ Model loaded successfully"
+        else
+          echo "⚠️  Model loading message not found in logs"
+          echo "Container logs:"
+          echo "$logs"
+        fi
     
     # Tear down
     - name: Stop container

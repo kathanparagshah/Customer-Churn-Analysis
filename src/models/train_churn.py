@@ -27,6 +27,7 @@ from sklearn.metrics import (
     confusion_matrix, classification_report
 )
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+import sklearn
 import xgboost as xgb
 import joblib
 import warnings
@@ -68,7 +69,18 @@ class ChurnPredictor:
         self.evaluation_results = {}
         
         # Set up paths
-        self.project_root = project_root or Path.cwd().parent.parent
+        if project_root:
+            self.project_root = project_root
+        else:
+            # Try to find project root by looking for key files
+            current = Path.cwd()
+            while current != current.parent:
+                if (current / 'data').exists() and (current / 'src').exists():
+                    self.project_root = current
+                    break
+                current = current.parent
+            else:
+                self.project_root = Path.cwd()
         self.data_dir = self.project_root / 'data'
         self.processed_dir = self.data_dir / 'processed'
         self.models_dir = self.project_root / 'models'
@@ -781,7 +793,8 @@ class ChurnPredictor:
             'scaler': self.scaler,
             'label_encoders': self.label_encoders,
             'feature_names': self.feature_names,
-            'evaluation_metrics': metrics
+            'evaluation_metrics': metrics,
+            'sklearn_version': sklearn.__version__
         }
         
         model_path = self.models_dir / 'churn_model.pkl'
@@ -822,7 +835,8 @@ class ChurnPredictor:
                 'scaler': self.scaler if self.best_model_name == 'logistic_regression' else None,
                 'label_encoders': self.label_encoders,
                 'feature_names': self.feature_names,
-                'evaluation_metrics': self.evaluation_results[self.best_model_name]
+                'evaluation_metrics': self.evaluation_results[self.best_model_name],
+                'sklearn_version': sklearn.__version__
             }
             
             # Save with gzip compression for better compatibility and smaller size
