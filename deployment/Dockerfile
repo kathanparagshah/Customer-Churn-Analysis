@@ -6,7 +6,7 @@ FROM python:3.9-slim AS builder
 WORKDIR /app
 
 # Copy requirements files
-COPY requirements.txt constraints.txt ./
+COPY ../requirements.txt ../constraints.txt ./
 
 # Install dependencies globally
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt -c constraints.txt
@@ -30,9 +30,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 WORKDIR /app
 
 # Copy application files
-COPY deployment/app.py .
-COPY src/ ./src/
-COPY deployment/models/churn_model.pkl ./models/churn_model.pkl
+COPY app.py .
+COPY ../src/ ./src/
+COPY models/churn_model.pkl ./models/churn_model.pkl
 
 # Create directories and set permissions
 RUN mkdir -p logs reports/figures && chown -R appuser:appuser /app
