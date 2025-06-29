@@ -30,6 +30,7 @@ from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 import sklearn
 import xgboost as xgb
 from sklearn.base import BaseEstimator
+from sklearn.utils import Tags
 import joblib
 import warnings
 from pathlib import Path
@@ -42,7 +43,12 @@ warnings.filterwarnings('ignore')
 # XGBoost sklearn compatibility wrapper for scikit-learn 1.7+
 class XGBClassifierWrapper(xgb.XGBClassifier, BaseEstimator):
     """Wrapper for XGBClassifier to satisfy scikit-learn 1.7's __sklearn_tags__ requirement."""
-    pass
+    
+    def __sklearn_tags__(self):
+        """Provide sklearn tags for XGBoost compatibility."""
+        tags = super().__sklearn_tags__()
+        # Override specific tags if needed
+        return tags
 
 
 class ChurnPredictor:

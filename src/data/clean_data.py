@@ -404,9 +404,21 @@ class DataCleaner:
         # Get feature names and create DataFrame
         try:
             # Build feature names exactly matching transformed columns
-            ohe = preprocessor.named_transformers_['cat']
-            cat_names = ohe.get_feature_names_out(available_categorical)
-            feature_names = list(available_numeric) + list(cat_names)
+            feature_names = []
+            
+            # Add numeric feature names
+            if available_numeric:
+                feature_names.extend(available_numeric)
+            
+            # Add categorical feature names (one-hot encoded)
+            if available_categorical:
+                ohe = preprocessor.named_transformers_['cat']
+                cat_names = ohe.get_feature_names_out(available_categorical)
+                feature_names.extend(cat_names)
+            
+            # Add binary feature names
+            if available_binary:
+                feature_names.extend(available_binary)
             
             df_trans = pd.DataFrame(processed_array, columns=feature_names, index=df.index)
         except Exception as e:

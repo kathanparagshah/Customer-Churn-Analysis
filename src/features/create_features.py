@@ -203,24 +203,24 @@ class FeatureEngineer:
         # Salary bins
         if 'EstimatedSalary' in df.columns:
             try:
-                df_features['SalaryGroup'] = pd.qcut(
+                salary_bins = pd.qcut(
                     df['EstimatedSalary'],
                     q=4,
                     labels=['Low', 'Medium', 'High', 'VeryHigh'],
                     duplicates='drop'
                 )
-                df_features['SalaryGroup_num'] = df_features['SalaryGroup'].cat.codes
+                df_features['SalaryGroup'] = salary_bins.cat.codes
                 logger.info("Created SalaryGroup features")
             except ValueError as e:
                 # Handle case where qcut can't create 4 bins due to duplicate values
                 logger.warning(f"Could not create 4 salary bins: {e}. Using 3 bins instead.")
-                df_features['SalaryGroup'] = pd.qcut(
+                salary_bins = pd.qcut(
                     df['EstimatedSalary'],
                     q=3,
                     labels=['Low', 'Medium', 'High'],
                     duplicates='drop'
                 )
-                df_features['SalaryGroup_num'] = df_features['SalaryGroup'].cat.codes
+                df_features['SalaryGroup'] = salary_bins.cat.codes
         
         return df_features
     
