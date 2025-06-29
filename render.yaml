@@ -3,7 +3,7 @@ services:
     name: churn-api
     env: docker
     repo: https://github.com/kathanparagshah/Customer-Churn-Analysis.git
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./deployment/Dockerfile
     dockerContext: .
     plan: starter
     region: oregon
