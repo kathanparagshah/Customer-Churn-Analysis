@@ -29,13 +29,16 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Set working directory
 WORKDIR /app
 
+# Create directories first
+RUN mkdir -p logs reports/figures models
+
 # Copy application files
 COPY app.py .
 COPY ../src/ ./src/
 COPY models/churn_model.pkl ./models/churn_model.pkl
 
-# Create directories and set permissions
-RUN mkdir -p logs reports/figures && chown -R appuser:appuser /app
+# Set permissions
+RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
