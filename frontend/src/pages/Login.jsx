@@ -1,14 +1,11 @@
-import React from 'react';
 import {
   Box,
   Container,
   VStack,
   Heading,
   Text,
-  Button,
   Card,
   CardBody,
-  Image,
   useColorModeValue,
   Flex,
   Icon,
@@ -16,7 +13,7 @@ import {
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { FaGoogle, FaShieldAlt, FaChartLine, FaUsers } from 'react-icons/fa';
+import { FaShieldAlt, FaChartLine, FaUsers } from 'react-icons/fa';
 
 const Login = () => {
   const { isAuthenticated, handleGoogleSuccess, handleGoogleFailure } = useAuth();

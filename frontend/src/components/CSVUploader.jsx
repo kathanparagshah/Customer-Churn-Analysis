@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { usePredictions } from '../context/PredictionsContext';
 

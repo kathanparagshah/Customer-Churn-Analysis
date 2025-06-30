@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import { createContext, useContext, useReducer } from 'react';
 
 // Initial state
 const initialState = {
@@ -134,5 +134,3 @@ export function usePredictions() {
   }
   return context;
 }
-
-export { ACTIONS };

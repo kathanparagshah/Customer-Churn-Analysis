@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
