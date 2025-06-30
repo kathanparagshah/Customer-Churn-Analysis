@@ -14,11 +14,21 @@
   },
   "homepage": ".",
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@google-cloud/local-auth": "^3.0.1",
+    "@react-oauth/google": "^0.12.2",
+    "framer-motion": "^11.11.17",
+    "google-auth-library": "^9.4.1",
+    "lucide-react": "^0.460.0",
     "papaparse": "^5.4.1",
-    "framer-motion": "^10.16.4",
-    "lucide-react": "^0.294.0"
+    "plotly.js": "^2.26.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-plotly.js": "^2.6.0",
+    "react-router-dom": "^6.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
