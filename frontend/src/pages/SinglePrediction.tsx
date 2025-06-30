@@ -96,6 +96,23 @@ const SinglePrediction: React.FC = () => {
     setError(null);
     
     try {
+      // Validate all fields are filled
+      const requiredFields = [
+        'creditScore', 'geography', 'gender', 'age', 'tenure', 
+        'balance', 'numOfProducts', 'hasCrCard', 'isActiveMember', 'estimatedSalary'
+      ];
+      
+      const emptyFields = requiredFields.filter(field => 
+        !customerData[field as keyof CustomerData] || 
+        customerData[field as keyof CustomerData].trim() === ''
+      );
+      
+      if (emptyFields.length > 0) {
+        setError(`Please fill in all required fields: ${emptyFields.join(', ')}`);
+        setLoading(false);
+        return;
+      }
+      
       // Convert form data to API format
       const payload = {
         CreditScore: parseInt(customerData.creditScore),
@@ -109,6 +126,16 @@ const SinglePrediction: React.FC = () => {
         IsActiveMember: parseInt(customerData.isActiveMember),
         EstimatedSalary: parseFloat(customerData.estimatedSalary),
       };
+      
+      // Validate parsed numbers
+      const numericFields = ['CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary'];
+      const invalidFields = numericFields.filter(field => isNaN(payload[field as keyof typeof payload] as number));
+      
+      if (invalidFields.length > 0) {
+        setError(`Invalid numeric values in fields: ${invalidFields.join(', ')}`);
+        setLoading(false);
+        return;
+      }
       
       // Make API call
       const response = await apiService.predictSingle(payload);
@@ -125,7 +152,32 @@ const SinglePrediction: React.FC = () => {
       setResult(result);
     } catch (err) {
       console.error('Prediction error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to get prediction. Please try again.');
+      
+      // Handle different types of errors
+      if (err instanceof Error) {
+        try {
+          // Try to parse JSON error response
+          const errorData = JSON.parse(err.message);
+          if (errorData.detail) {
+            if (Array.isArray(errorData.detail)) {
+              // Validation errors from FastAPI
+              const validationErrors = errorData.detail.map((error: any) => 
+                `${error.loc?.join('.')} - ${error.msg}`
+              ).join('; ');
+              setError(`Validation errors: ${validationErrors}`);
+            } else {
+              setError(`Error: ${errorData.detail}`);
+            }
+          } else {
+            setError(err.message);
+          }
+        } catch {
+          // If not JSON, use the original error message
+          setError(err.message);
+        }
+      } else {
+        setError('Failed to get prediction. Please check your input and try again.');
+      }
     } finally {
       setLoading(false);
     }
