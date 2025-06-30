@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { PredictionsContext } from '../context/PredictionsContext';
+import { PredictionsContext } from '../contexts/PredictionsContextDefinition';
 
 export const usePredictions = () => {
   const context = useContext(PredictionsContext);

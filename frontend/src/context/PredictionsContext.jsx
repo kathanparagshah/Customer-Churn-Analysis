@@ -1,4 +1,5 @@
-import { createContext, useReducer } from 'react';
+import { useReducer } from 'react';
+import { PredictionsContext } from '../contexts/PredictionsContextDefinition';
 
 // Initial state
 const initialState = {
@@ -75,9 +76,6 @@ function predictionsReducer(state, action) {
       return state;
   }
 }
-
-// Create context
-export const PredictionsContext = createContext();
 
 // Provider component
 export function PredictionsProvider({ children }) {
