@@ -1,4 +1,5 @@
-# Bank Customer Churn Analysis
+# Customer Churn Analysis
+<!-- Trigger deployment with VERCEL_TOKEN -->
 
 A comprehensive machine learning project for predicting customer churn in banking, featuring automated data pipelines, model explainability, and full-stack deployment.
 
