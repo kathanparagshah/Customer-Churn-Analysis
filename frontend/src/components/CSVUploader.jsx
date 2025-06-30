@@ -153,7 +153,7 @@ const CSVUploader = () => {
     
     try {
       // Transform data to match API format
-      const transformedData = validRows.map(row => ({
+      const transformedData = data.map(row => ({
           CreditScore: parseInt(row.CreditScore),
           Geography: row.Geography,
           Gender: row.Gender,
