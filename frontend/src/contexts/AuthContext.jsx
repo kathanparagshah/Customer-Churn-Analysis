@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 
 // Create the AuthContext
@@ -98,4 +98,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+export { AuthContext };
 export default AuthProvider;
