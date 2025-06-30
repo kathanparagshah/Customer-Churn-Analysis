@@ -15,7 +15,8 @@ class ApiService {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      // Throw the full error data as JSON string so frontend can parse it
+      throw new Error(JSON.stringify(errorData));
     }
     
     return response.json();
