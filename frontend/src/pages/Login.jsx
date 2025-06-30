@@ -11,7 +11,7 @@ import {
   Icon,
 } from '@chakra-ui/react';
 import { GoogleLogin } from '@react-oauth/google';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { FaShieldAlt, FaChartLine, FaUsers } from 'react-icons/fa';
 

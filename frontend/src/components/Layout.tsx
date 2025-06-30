@@ -20,7 +20,7 @@ import {
   Divider,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, BarChart3, User, FileText, TrendingUp, Activity, LogOut } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface LayoutProps {

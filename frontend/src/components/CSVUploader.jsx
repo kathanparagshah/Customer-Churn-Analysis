@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, AlertCircle, CheckCircle } from 'lucide-react';
 import Papa from 'papaparse';
-import { usePredictions } from '../context/PredictionsContext';
+import { usePredictions } from '../hooks/usePredictions';
 
 const CSVUploader = () => {
   const [dragActive, setDragActive] = useState(false);

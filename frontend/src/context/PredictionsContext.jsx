@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer } from 'react';
+import { createContext, useReducer } from 'react';
 
 // Initial state
 const initialState = {
@@ -77,7 +77,7 @@ function predictionsReducer(state, action) {
 }
 
 // Create context
-const PredictionsContext = createContext();
+export const PredictionsContext = createContext();
 
 // Provider component
 export function PredictionsProvider({ children }) {
@@ -124,13 +124,4 @@ export function PredictionsProvider({ children }) {
       {children}
     </PredictionsContext.Provider>
   );
-}
-
-// Custom hook to use the context
-export function usePredictions() {
-  const context = useContext(PredictionsContext);
-  if (!context) {
-    throw new Error('usePredictions must be used within a PredictionsProvider');
-  }
-  return context;
 }
