@@ -41,6 +41,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import Plot from 'react-plotly.js';
+import { PlotData, Layout } from 'plotly.js';
 import apiService from '../services/apiService';
 
 interface BatchResult {
@@ -124,34 +125,34 @@ const BatchPredictions: React.FC = () => {
           const value = values[i];
           switch (header.toLowerCase()) {
             case 'creditscore':
-              customer.credit_score = parseInt(value);
+              customer.CreditScore = parseInt(value);
               break;
             case 'geography':
-              customer.geography = value;
+              customer.Geography = value;
               break;
             case 'gender':
-              customer.gender = value;
+              customer.Gender = value;
               break;
             case 'age':
-              customer.age = parseInt(value);
+              customer.Age = parseInt(value);
               break;
             case 'tenure':
-              customer.tenure = parseInt(value);
+              customer.Tenure = parseInt(value);
               break;
             case 'balance':
-              customer.balance = parseFloat(value);
+              customer.Balance = parseFloat(value);
               break;
             case 'numofproducts':
-              customer.num_of_products = parseInt(value);
+              customer.NumOfProducts = parseInt(value);
               break;
             case 'hascrcard':
-              customer.has_cr_card = parseInt(value);
+              customer.HasCrCard = parseInt(value);
               break;
             case 'isactivemember':
-              customer.is_active_member = parseInt(value);
+              customer.IsActiveMember = parseInt(value);
               break;
             case 'estimatedsalary':
-              customer.estimated_salary = parseFloat(value);
+              customer.EstimatedSalary = parseFloat(value);
               break;
           }
         });
@@ -539,14 +540,14 @@ const BatchPredictions: React.FC = () => {
                     </Text>
                     {pieData && (
                       <Plot
-                        data={[pieData]}
+                        data={[pieData] as PlotData[]}
                         layout={{
                           width: 400,
                           height: 300,
                           margin: { t: 0, b: 0, l: 0, r: 0 },
                           showlegend: true,
                           legend: { orientation: 'h', y: -0.1 },
-                        }}
+                        } as Partial<Layout>}
                         config={{ displayModeBar: false }}
                       />
                     )}
@@ -560,14 +561,14 @@ const BatchPredictions: React.FC = () => {
                       Probability Distribution
                     </Text>
                     <Plot
-                      data={[histogramData]}
+                      data={[histogramData] as PlotData[]}
                       layout={{
                         width: 400,
                         height: 250,
                         margin: { t: 20, b: 40, l: 40, r: 20 },
                         xaxis: { title: 'Churn Probability' },
                         yaxis: { title: 'Count' },
-                      }}
+                      } as Partial<Layout>}
                       config={{ displayModeBar: false }}
                     />
                   </CardBody>
@@ -580,14 +581,14 @@ const BatchPredictions: React.FC = () => {
                       Risk Level Distribution
                     </Text>
                     <Plot
-                      data={[barData]}
+                      data={[barData] as PlotData[]}
                       layout={{
                         width: 400,
                         height: 250,
                         margin: { t: 20, b: 40, l: 40, r: 20 },
                         xaxis: { title: 'Risk Level' },
                         yaxis: { title: 'Count' },
-                      }}
+                      } as Partial<Layout>}
                       config={{ displayModeBar: false }}
                     />
                   </CardBody>

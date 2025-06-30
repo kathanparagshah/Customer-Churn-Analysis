@@ -97,21 +97,21 @@ const SinglePrediction: React.FC = () => {
     
     try {
       // Convert form data to API format
-      const apiData = {
-        credit_score: parseInt(customerData.creditScore),
-        geography: customerData.geography,
-        gender: customerData.gender,
-        age: parseInt(customerData.age),
-        tenure: parseInt(customerData.tenure),
-        balance: parseFloat(customerData.balance),
-        num_of_products: parseInt(customerData.numOfProducts),
-        has_cr_card: parseInt(customerData.hasCrCard),
-        is_active_member: parseInt(customerData.isActiveMember),
-        estimated_salary: parseFloat(customerData.estimatedSalary),
+      const payload = {
+        CreditScore: parseInt(customerData.creditScore),
+        Geography: customerData.geography,
+        Gender: customerData.gender,
+        Age: parseInt(customerData.age),
+        Tenure: parseInt(customerData.tenure),
+        Balance: parseFloat(customerData.balance),
+        NumOfProducts: parseInt(customerData.numOfProducts),
+        HasCrCard: parseInt(customerData.hasCrCard),
+        IsActiveMember: parseInt(customerData.isActiveMember),
+        EstimatedSalary: parseFloat(customerData.estimatedSalary),
       };
       
       // Make API call
-      const response = await apiService.predictSingle(apiData);
+      const response = await apiService.predictSingle(payload);
       
       // Transform API response to match component interface
       const result: PredictionResult = {
