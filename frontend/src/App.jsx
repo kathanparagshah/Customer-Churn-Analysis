@@ -13,7 +13,7 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard.tsx';
 
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-google-client-id';
-  
+   
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
