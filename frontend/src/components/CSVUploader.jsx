@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Upload, AlertCircle, CheckCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { usePredictions } from '../hooks/usePredictions';
+import apiService from '../services/apiService';
 
 const CSVUploader = () => {
   const [dragActive, setDragActive] = useState(false);
@@ -153,32 +154,20 @@ const CSVUploader = () => {
     try {
       // Transform data to match API format
       const customers = data.map(row => ({
-        CreditScore: parseInt(row.CreditScore),
-        Geography: row.Geography,
-        Gender: row.Gender,
-        Age: parseInt(row.Age),
-        Tenure: parseInt(row.Tenure),
-        Balance: parseFloat(row.Balance),
-        NumOfProducts: parseInt(row.NumOfProducts),
-        HasCrCard: parseInt(row.HasCrCard),
-        IsActiveMember: parseInt(row.IsActiveMember),
-        EstimatedSalary: parseFloat(row.EstimatedSalary)
+        credit_score: parseInt(row.CreditScore),
+        geography: row.Geography,
+        gender: row.Gender,
+        age: parseInt(row.Age),
+        tenure: parseInt(row.Tenure),
+        balance: parseFloat(row.Balance),
+        num_of_products: parseInt(row.NumOfProducts),
+        has_cr_card: parseInt(row.HasCrCard),
+        is_active_member: parseInt(row.IsActiveMember),
+        estimated_salary: parseFloat(row.EstimatedSalary)
       }));
 
-      const response = await fetch('/api/predict/batch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ customers }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      // Use API service for batch prediction
+      const result = await apiService.predictBatch(customers);
       
       // Combine original data with predictions
       const enrichedPredictions = result.predictions.map((prediction, index) => ({

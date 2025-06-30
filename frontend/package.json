@@ -21,6 +21,7 @@
     "@react-oauth/google": "^0.12.2",
     "framer-motion": "^11.11.17",
     "google-auth-library": "^9.4.1",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.460.0",
     "papaparse": "^5.4.1",
     "plotly.js": "^2.26.0",

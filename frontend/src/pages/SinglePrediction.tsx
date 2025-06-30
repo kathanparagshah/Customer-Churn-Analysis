@@ -46,6 +46,7 @@ import {
   Target,
   Brain,
 } from 'lucide-react';
+import apiService from '../services/apiService';
 
 interface CustomerData {
   creditScore: string;
@@ -95,27 +96,36 @@ const SinglePrediction: React.FC = () => {
     setError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock prediction result
-      const mockResult: PredictionResult = {
-        churnProbability: Math.random(),
-        riskLevel: Math.random() > 0.7 ? 'High' : Math.random() > 0.4 ? 'Medium' : 'Low',
-        confidence: 0.85 + Math.random() * 0.15,
-        prediction: Math.random() > 0.5 ? 'Will Churn' : 'Will Stay',
-        shapValues: {
-          'Credit Score': Math.random() * 0.2 - 0.1,
-          'Age': Math.random() * 0.15 - 0.075,
-          'Balance': Math.random() * 0.1 - 0.05,
-          'Geography': Math.random() * 0.08 - 0.04,
-          'Number of Products': Math.random() * 0.12 - 0.06,
-        },
+      // Convert form data to API format
+      const apiData = {
+        credit_score: parseInt(customerData.creditScore),
+        geography: customerData.geography,
+        gender: customerData.gender,
+        age: parseInt(customerData.age),
+        tenure: parseInt(customerData.tenure),
+        balance: parseFloat(customerData.balance),
+        num_of_products: parseInt(customerData.numOfProducts),
+        has_cr_card: parseInt(customerData.hasCrCard),
+        is_active_member: parseInt(customerData.isActiveMember),
+        estimated_salary: parseFloat(customerData.estimatedSalary),
       };
       
-      setResult(mockResult);
+      // Make API call
+      const response = await apiService.predictSingle(apiData);
+      
+      // Transform API response to match component interface
+      const result: PredictionResult = {
+        churnProbability: response.churn_probability,
+        riskLevel: response.risk_level,
+        confidence: response.confidence,
+        prediction: response.prediction === 1 ? 'Will Churn' : 'Will Stay',
+        shapValues: response.feature_importance || {},
+      };
+      
+      setResult(result);
     } catch (err) {
-      setError('Failed to get prediction. Please try again.');
+      console.error('Prediction error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to get prediction. Please try again.');
     } finally {
       setLoading(false);
     }

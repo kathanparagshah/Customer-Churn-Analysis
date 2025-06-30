@@ -41,6 +41,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import Plot from 'react-plotly.js';
+import apiService from '../services/apiService';
 
 interface BatchResult {
   id: string;
@@ -109,31 +110,81 @@ const BatchPredictions: React.FC = () => {
     setError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Parse CSV file
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim());
       
-      // Mock results
-      const mockResults: BatchResult[] = Array.from({ length: 50 }, (_, i) => ({
-        id: `CUST-${String(i + 1).padStart(3, '0')}`,
-        customerName: `Customer ${i + 1}`,
-        churnProbability: Math.random(),
-        riskLevel: Math.random() > 0.7 ? 'High' : Math.random() > 0.4 ? 'Medium' : 'Low',
-        prediction: Math.random() > 0.5 ? 'Will Churn' : 'Will Stay',
-        confidence: 0.75 + Math.random() * 0.25,
+      // Convert CSV data to API format
+      const customers = lines.slice(1).map((line, index) => {
+        const values = line.split(',').map(v => v.trim());
+        const customer: any = {};
+        
+        headers.forEach((header, i) => {
+          const value = values[i];
+          switch (header.toLowerCase()) {
+            case 'creditscore':
+              customer.credit_score = parseInt(value);
+              break;
+            case 'geography':
+              customer.geography = value;
+              break;
+            case 'gender':
+              customer.gender = value;
+              break;
+            case 'age':
+              customer.age = parseInt(value);
+              break;
+            case 'tenure':
+              customer.tenure = parseInt(value);
+              break;
+            case 'balance':
+              customer.balance = parseFloat(value);
+              break;
+            case 'numofproducts':
+              customer.num_of_products = parseInt(value);
+              break;
+            case 'hascrcard':
+              customer.has_cr_card = parseInt(value);
+              break;
+            case 'isactivemember':
+              customer.is_active_member = parseInt(value);
+              break;
+            case 'estimatedsalary':
+              customer.estimated_salary = parseFloat(value);
+              break;
+          }
+        });
+        
+        return customer;
+      });
+      
+      // Make API call
+      const response = await apiService.predictBatch(customers);
+      
+      // Transform API response to match component interface
+      const results: BatchResult[] = response.predictions.map((pred: any, index: number) => ({
+        id: `CUST-${String(index + 1).padStart(3, '0')}`,
+        customerName: `Customer ${index + 1}`,
+        churnProbability: pred.churn_probability,
+        riskLevel: pred.risk_level,
+        prediction: pred.prediction === 1 ? 'Will Churn' : 'Will Stay',
+        confidence: pred.confidence,
       }));
       
-      const churners = mockResults.filter(r => r.prediction === 'Will Churn').length;
-      const mockSummary: BatchSummary = {
-        totalCustomers: mockResults.length,
+      const churners = results.filter(r => r.prediction === 'Will Churn').length;
+      const summary: BatchSummary = {
+        totalCustomers: results.length,
         predictedChurners: churners,
-        churnRate: churners / mockResults.length,
-        averageProbability: mockResults.reduce((sum, r) => sum + r.churnProbability, 0) / mockResults.length,
+        churnRate: churners / results.length,
+        averageProbability: results.reduce((sum, r) => sum + r.churnProbability, 0) / results.length,
       };
       
-      setResults(mockResults);
-      setSummary(mockSummary);
+      setResults(results);
+      setSummary(summary);
     } catch (err) {
-      setError('Failed to process file. Please try again.');
+      console.error('Batch prediction error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process file. Please try again.');
     } finally {
       setLoading(false);
     }

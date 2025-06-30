@@ -6,8 +6,10 @@ A comprehensive machine learning project for predicting customer churn in bankin
 ## 🚀 Live Demo
 
 - **Frontend**: [https://customer-churn-analysis-kgz3.vercel.app](https://customer-churn-analysis-kgz3.vercel.app)
-- **API**: [https://api.customer-churn-demo.com](https://api.customer-churn-demo.com)
-- **API Documentation**: [https://api.customer-churn-demo.com/docs](https://api.customer-churn-demo.com/docs)
+- **API**: Deploy your own backend using the [Deployment Guide](DEPLOYMENT_GUIDE.md)
+- **API Documentation**: Available at `/docs` endpoint of your deployed backend
+
+> **Note**: The frontend currently uses mock data. Follow the [Deployment Guide](DEPLOYMENT_GUIDE.md) to connect it to real APIs.
 
 ## Project Overview
 
@@ -29,8 +31,31 @@ The solution addresses real-world challenges in customer retention by providing:
 - **Model Explainability**: SHAP integration for interpretable AI
 - **Fairness Analysis**: Bias detection across demographic groups
 - **API Deployment**: FastAPI-based prediction service
+- **Full-Stack Integration**: React frontend with real API connectivity
 - **Comprehensive Testing**: Unit tests with 95%+ coverage
 - **Monitoring**: Data drift detection and model performance tracking
+
+## 🔗 API Integration
+
+The application supports both mock data (for demo purposes) and real API integration:
+
+### Current Status
+- ✅ **CSV Uploader**: Connected to real API
+- 🔄 **Single Prediction**: Updated to use real API (requires backend deployment)
+- 🔄 **Batch Predictions**: Updated to use real API (requires backend deployment)
+- 🔄 **Google OAuth**: API service ready (requires backend endpoint)
+
+### Quick Setup
+1. **Deploy Backend**: Follow the [Deployment Guide](DEPLOYMENT_GUIDE.md)
+2. **Configure Vercel**: Set `VITE_API_BASE_URL` environment variable
+3. **Test Integration**: Use `python test_api_integration.py` to verify
+
+### API Endpoints
+- `POST /predict` - Single customer prediction
+- `POST /predict/batch` - Batch customer predictions
+- `GET /health` - Health check
+- `GET /model/info` - Model information
+- `GET /docs` - Interactive API documentation
 
 ## Dependencies
 

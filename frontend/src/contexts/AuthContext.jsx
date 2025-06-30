@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
-import { AuthContext } from './AuthContextDefinition';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
+import apiService from '../services/apiService';
+
+// Create the AuthContext
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -66,23 +70,12 @@ export const AuthProvider = ({ children }) => {
     console.log('User logged out successfully');
   };
 
-  // Mock function to save user to backend
+  // Function to save user to backend
   const saveUserToBackend = async (userData) => {
     try {
-      // In a real application, this would be an API call to your backend
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save user to backend');
-      }
-      
-      return await response.json();
+      // Use API service for backend call
+      const response = await apiService.saveUserToBackend(userData);
+      return response;
     } catch (error) {
       // For demo purposes, we'll just log the error and continue
       console.log('Backend not available, continuing with local auth:', error.message);
