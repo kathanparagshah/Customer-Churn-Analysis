@@ -29,6 +29,9 @@ import {
   Progress,
   Flex,
   Divider,
+  Select,
+  ButtonGroup,
+  IconButton,
 } from '@chakra-ui/react';
 import {
   Upload,
@@ -39,9 +42,14 @@ import {
   Percent,
   Target,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import Plot from 'react-plotly.js';
 import { PlotData, Layout } from 'plotly.js';
+import { PlotParams } from 'react-plotly.js';
 import apiService from '../services/apiService';
 
 interface BatchResult {
@@ -67,6 +75,8 @@ const BatchPredictions: React.FC = () => {
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -183,6 +193,7 @@ const BatchPredictions: React.FC = () => {
       
       setResults(results);
       setSummary(summary);
+      setCurrentPage(1); // Reset to first page when new results are loaded
     } catch (err) {
       console.error('Batch prediction error:', err);
       setError(err instanceof Error ? err.message : 'Failed to process file. Please try again.');
@@ -215,6 +226,22 @@ const BatchPredictions: React.FC = () => {
       case 'Low': return 'green';
       default: return 'gray';
     }
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(results.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentResults = itemsPerPage === -1 ? results : results.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    const newItemsPerPage = value === 'all' ? -1 : parseInt(value);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
   };
 
   // Chart data
@@ -466,9 +493,26 @@ const BatchPredictions: React.FC = () => {
                       <Text fontSize="lg" fontWeight="bold" color="primary.500">
                         Customer Predictions
                       </Text>
-                      <Button size="sm" leftIcon={<Download />} variant="outline">
-                        Export Results
-                      </Button>
+                      <HStack spacing={4}>
+                        <HStack spacing={2}>
+                          <Text fontSize="sm" color="secondary.600">Show:</Text>
+                          <Select
+                            size="sm"
+                            value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()}
+                            onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                            w="auto"
+                          >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">All</option>
+                          </Select>
+                        </HStack>
+                        <Button size="sm" leftIcon={<Download />} variant="outline">
+                          Export Results
+                        </Button>
+                      </HStack>
                     </HStack>
                   </Box>
                   <Box maxH="600px" overflowY="auto">
@@ -483,45 +527,112 @@ const BatchPredictions: React.FC = () => {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {results.slice(0, 20).map((result, index) => (
-                          <Tr key={result.id} bg={index % 2 === 0 ? 'background.100' : 'white'}>
-                            <Td fontWeight="medium" color="primary.500">{result.id}</Td>
-                            <Td>{result.customerName}</Td>
-                            <Td>
-                              <VStack spacing={1} align="start">
-                                <Text fontWeight="bold">
-                                  {(result.churnProbability * 100).toFixed(1)}%
-                                </Text>
-                                <Progress
-                                  value={result.churnProbability * 100}
-                                  size="xs"
-                                  colorScheme={result.churnProbability > 0.7 ? 'red' : result.churnProbability > 0.4 ? 'yellow' : 'green'}
-                                  w="60px"
-                                />
-                              </VStack>
-                            </Td>
-                            <Td>
-                              <Badge colorScheme={getRiskColor(result.riskLevel)} variant="subtle">
-                                {result.riskLevel}
-                              </Badge>
-                            </Td>
-                            <Td>
-                              <Badge
-                                colorScheme={result.prediction === 'Will Churn' ? 'red' : 'green'}
-                                variant="outline"
-                              >
-                                {result.prediction}
-                              </Badge>
-                            </Td>
-                          </Tr>
-                        ))}
+                        {currentResults.map((result, index) => {
+                          const globalIndex = itemsPerPage === -1 ? index : startIndex + index;
+                          return (
+                            <Tr key={result.id} bg={globalIndex % 2 === 0 ? 'background.100' : 'white'}>
+                              <Td fontWeight="medium" color="primary.500">{result.id}</Td>
+                              <Td>{result.customerName}</Td>
+                              <Td>
+                                <VStack spacing={1} align="start">
+                                  <Text fontWeight="bold">
+                                    {(result.churnProbability * 100).toFixed(1)}%
+                                  </Text>
+                                  <Progress
+                                    value={result.churnProbability * 100}
+                                    size="xs"
+                                    colorScheme={result.churnProbability > 0.7 ? 'red' : result.churnProbability > 0.4 ? 'yellow' : 'green'}
+                                    w="60px"
+                                  />
+                                </VStack>
+                              </Td>
+                              <Td>
+                                <Badge colorScheme={getRiskColor(result.riskLevel)} variant="subtle">
+                                  {result.riskLevel}
+                                </Badge>
+                              </Td>
+                              <Td>
+                                <Badge
+                                  colorScheme={result.prediction === 'Will Churn' ? 'red' : 'green'}
+                                  variant="outline"
+                                >
+                                  {result.prediction}
+                                </Badge>
+                              </Td>
+                            </Tr>
+                          );
+                        })}
                       </Tbody>
                     </Table>
                   </Box>
-                  {results.length > 20 && (
+                  {itemsPerPage !== -1 && results.length > itemsPerPage && (
+                    <Box p={4} borderTop="1px" borderColor="gray.200">
+                      <HStack justify="space-between" align="center">
+                        <Text fontSize="sm" color="secondary.600">
+                          Showing {startIndex + 1}-{Math.min(endIndex, results.length)} of {results.length} results
+                        </Text>
+                        <HStack spacing={2}>
+                          <ButtonGroup size="sm" isAttached variant="outline">
+                            <IconButton
+                              aria-label="First page"
+                              icon={<ChevronsLeft />}
+                              onClick={() => handlePageChange(1)}
+                              isDisabled={currentPage === 1}
+                            />
+                            <IconButton
+                              aria-label="Previous page"
+                              icon={<ChevronLeft />}
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              isDisabled={currentPage === 1}
+                            />
+                          </ButtonGroup>
+                          <HStack spacing={1}>
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  size="sm"
+                                  variant={currentPage === pageNum ? 'solid' : 'outline'}
+                                  colorScheme={currentPage === pageNum ? 'blue' : 'gray'}
+                                  onClick={() => handlePageChange(pageNum)}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                          </HStack>
+                          <ButtonGroup size="sm" isAttached variant="outline">
+                            <IconButton
+                              aria-label="Next page"
+                              icon={<ChevronRight />}
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              isDisabled={currentPage === totalPages}
+                            />
+                            <IconButton
+                              aria-label="Last page"
+                              icon={<ChevronsRight />}
+                              onClick={() => handlePageChange(totalPages)}
+                              isDisabled={currentPage === totalPages}
+                            />
+                          </ButtonGroup>
+                        </HStack>
+                      </HStack>
+                    </Box>
+                  )}
+                  {itemsPerPage === -1 && (
                     <Box p={4} borderTop="1px" borderColor="gray.200" textAlign="center">
                       <Text fontSize="sm" color="secondary.600">
-                        Showing 20 of {results.length} results
+                        Showing all {results.length} results
                       </Text>
                     </Box>
                   )}
@@ -540,14 +651,14 @@ const BatchPredictions: React.FC = () => {
                     </Text>
                     {pieData && (
                       <Plot
-                        data={[pieData] as PlotData[]}
+                        data={[pieData] as any[]}
                         layout={{
                           width: 400,
                           height: 300,
                           margin: { t: 0, b: 0, l: 0, r: 0 },
                           showlegend: true,
                           legend: { orientation: 'h', y: -0.1 },
-                        } as Partial<Layout>}
+                        } as any}
                         config={{ displayModeBar: false }}
                       />
                     )}
@@ -561,14 +672,14 @@ const BatchPredictions: React.FC = () => {
                       Probability Distribution
                     </Text>
                     <Plot
-                      data={[histogramData] as PlotData[]}
+                      data={[histogramData] as any[]}
                       layout={{
                         width: 400,
                         height: 250,
                         margin: { t: 20, b: 40, l: 40, r: 20 },
                         xaxis: { title: 'Churn Probability' },
                         yaxis: { title: 'Count' },
-                      } as Partial<Layout>}
+                      } as any}
                       config={{ displayModeBar: false }}
                     />
                   </CardBody>
@@ -581,14 +692,14 @@ const BatchPredictions: React.FC = () => {
                       Risk Level Distribution
                     </Text>
                     <Plot
-                      data={[barData] as PlotData[]}
+                      data={[barData] as any[]}
                       layout={{
                         width: 400,
                         height: 250,
                         margin: { t: 20, b: 40, l: 40, r: 20 },
                         xaxis: { title: 'Risk Level' },
                         yaxis: { title: 'Count' },
-                      } as Partial<Layout>}
+                      } as any}
                       config={{ displayModeBar: false }}
                     />
                   </CardBody>
