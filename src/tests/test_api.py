@@ -230,10 +230,11 @@ class TestModelManager:
         model = RandomForestClassifier(n_estimators=10, random_state=42)
         scaler = StandardScaler()
         
-        # Define feature names that match customer data structure
+        # Define feature names that match the actual deployment structure (11 features)
         feature_names = [
-            'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure',
-            'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary'
+            'CreditScore', 'Geography_Germany', 'Geography_Spain', 'Gender_Male', 
+            'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 
+            'IsActiveMember', 'EstimatedSalary'
         ]
         
         # Create label encoders for categorical features
@@ -246,8 +247,8 @@ class TestModelManager:
         gender_encoder.fit(['Female', 'Male'])
         label_encoders['Gender'] = gender_encoder
         
-        # Create sample data to fit the model
-        X_sample = np.random.randn(100, len(feature_names))
+        # Create sample data to fit the model (11 features)
+        X_sample = np.random.randn(100, 11)  # 11 features to match expected_features
         y_sample = np.random.choice([0, 1], 100)
         
         # Fit model and scaler
@@ -944,11 +945,13 @@ class TestAPIEndpoints:
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test successful prediction endpoint."""
         with patch('deployment.app.model_loaded', True), \
+             patch('deployment.app.is_model_loaded', return_value=True), \
              patch('deployment.app.model') as mock_model, \
+             patch('deployment.app.model_metadata', {'version': '1.0.0'}), \
              patch('deployment.app.preprocess_customer_data') as mock_preprocess:
             
-            # Mock preprocessing
-            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5]])
+            # Mock preprocessing to return 11 features
+            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]])
             
             # Mock model predictions
             mock_model.predict_proba.return_value = np.array([[0.75, 0.25]])
@@ -1027,52 +1030,47 @@ class TestAPIEndpoints:
         data = response.json()
         assert "detail" in data
     
-    @patch('deployment.app.model_manager')
-    def test_batch_predict_endpoint_success(self, mock_manager, client, valid_customer_data):
+    def test_batch_predict_endpoint_success(self, client, valid_customer_data):
         """Test successful batch prediction endpoint."""
-        # Mock model manager
-        mock_manager.is_loaded = True
-        mock_manager.predict_batch.return_value = [
-            {
-                "churn_probability": 0.25,
-                "churn_prediction": 0,
-                "risk_level": "Low",
-                "confidence": 0.75
-            },
-            {
-                "churn_probability": 0.75,
-                "churn_prediction": 1,
-                "risk_level": "High",
-                "confidence": 0.85
+        with patch('deployment.app.model_loaded', True), \
+             patch('deployment.app.is_model_loaded', return_value=True), \
+             patch('deployment.app.model') as mock_model, \
+             patch('deployment.app.model_metadata', {'version': '1.0.0', 'name': 'test_model'}), \
+             patch('deployment.app.model_manager') as mock_manager:
+            
+            # Mock model manager preprocessing
+            mock_manager.preprocess_customer_data.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]])
+            
+            # Mock model predictions
+            mock_model.predict_proba.return_value = np.array([[0.75, 0.25]])
+            mock_model.predict.return_value = np.array([0])
+            
+            batch_data = {
+                "customers": [valid_customer_data, valid_customer_data]
             }
-        ]
-        
-        batch_data = {
-            "customers": [valid_customer_data, valid_customer_data]
-        }
-        
-        response = client.post("/predict/batch", json=batch_data)
-        
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        
-        # Check response structure
-        assert "predictions" in data
-        assert "summary" in data
-        assert "loaded" in data
-        assert "model_name" in data
-        assert "version" in data
-        
-        # Check predictions
-        predictions = data["predictions"]
-        assert len(predictions) == 2
-        assert data["summary"]["total_customers"] == 2
-        
-        for prediction in predictions:
-            assert "churn_probability" in prediction
-            assert "churn_prediction" in prediction
-            assert "risk_level" in prediction
-            assert "confidence" in prediction
+            
+            response = client.post("/predict/batch", json=batch_data)
+            
+            assert response.status_code == status.HTTP_200_OK
+            data = response.json()
+            
+            # Check response structure
+            assert "predictions" in data
+            assert "summary" in data
+            assert "loaded" in data
+            assert "model_name" in data
+            assert "version" in data
+            
+            # Check predictions
+            predictions = data["predictions"]
+            assert len(predictions) == 2
+            assert data["summary"]["total_customers"] == 2
+            
+            for prediction in predictions:
+                assert "churn_probability" in prediction
+                assert "churn_prediction" in prediction
+                assert "risk_level" in prediction
+                assert "confidence" in prediction
     
     def test_batch_predict_empty_list(self, client):
         """Test batch prediction with empty customer list."""
