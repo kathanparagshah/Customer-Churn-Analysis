@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-07-01T13:23:06.422389",
+  "original_features": 12,
+  "engineered_features": 18,
+  "new_features_created": 6,
+  "feature_categories": {
+    "ratio_features": [],
+    "binned_features": [],
+    "behavioral_features": [
+      "EngagementScore"
+    ],
+    "statistical_features": [
+      "NumOfProducts_scaled_zscore",
+      "Tenure_scaled_zscore",
+      "Balance_scaled_zscore",
+      "Age_scaled_zscore",
+      "CreditScore_scaled_zscore"
+    ]
+  },
+  "top_features": [
+    "Tenure_scaled_zscore",
+    "Tenure_scaled",
+    "CreditScore_scaled_zscore",
+    "CreditScore_scaled",
+    "Age_scaled",
+    "Age_scaled_zscore",
+    "Balance_scaled_zscore",
+    "Balance_scaled",
+    "EstimatedSalary_scaled",
+    "Gender_Male"
+  ],
+  "feature_importance_available": true
+}

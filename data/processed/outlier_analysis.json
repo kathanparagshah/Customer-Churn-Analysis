@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-07-01T13:22:59.122728",
+  "method": "IQR and Z-score",
+  "outliers_by_column": {
+    "CreditScore": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": 457.5,
+        "upper": 877.5
+      }
+    },
+    "Age": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": 13.5,
+        "upper": 61.5
+      }
+    },
+    "Tenure": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": -3.75,
+        "upper": 14.25
+      }
+    },
+    "Balance": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": -61250.0,
+        "upper": 248750.0
+      }
+    },
+    "NumOfProducts": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": -0.5,
+        "upper": 3.5
+      }
+    },
+    "EstimatedSalary": {
+      "iqr_outliers": 0,
+      "z_score_outliers": 0,
+      "total_outliers": 0,
+      "percentage": 0.0,
+      "bounds": {
+        "lower": 24000.0,
+        "upper": 124000.0
+      }
+    }
+  },
+  "total_outlier_rows": 0,
+  "outlier_percentage": 0.0
+}

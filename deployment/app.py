@@ -511,22 +511,24 @@ class ModelManager:
         # Build a one-row pandas DataFrame from customer_data
         df = pd.DataFrame([customer_data])
         
-        # Apply label encoding for categorical variables
-        for col, encoder in self.label_encoders.items():
-            if col in df.columns:
-                try:
-                    df[col] = encoder.transform(df[col].astype(str))
-                except ValueError as e:
-                    logger.warning(f"Unknown category in {col}: {df[col].iloc[0]}. Using default encoding.")
-                    # Handle unknown categories by using the most frequent class
-                    df[col] = encoder.transform([encoder.classes_[0]])
+        # Create one-hot encoded categorical features
+        # Geography encoding
+        df['Geography_Germany'] = 1 if df['Geography'].iloc[0] == 'Germany' else 0
+        df['Geography_Spain'] = 1 if df['Geography'].iloc[0] == 'Spain' else 0
         
-        # If feature_names is set, reorder columns to match
-        if self.feature_names is not None:
-            df = df[self.feature_names]
+        # Gender encoding
+        df['Gender_Male'] = 1 if df['Gender'].iloc[0] == 'Male' else 0
         
-        # Return scaler.transform(df.values) as numpy array
-        return self.scaler.transform(df.values)
+        # Create the feature array in the expected order
+        expected_features = ['CreditScore', 'Geography_Germany', 'Geography_Spain', 'Gender_Male', 
+                            'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 
+                            'IsActiveMember', 'EstimatedSalary']
+        
+        # Combine numerical and categorical features
+        feature_array = df[expected_features].values
+        
+        # Apply scaling to the complete feature array
+        return self.scaler.transform(feature_array)
     
     def predict_single(self, customer_data: dict) -> dict:
         """
@@ -615,26 +617,25 @@ def preprocess_customer_data(customer_data: CustomerData) -> np.ndarray:
     # Convert to DataFrame
     df = pd.DataFrame([customer_data.dict()])
     
-    # Apply label encoding for categorical variables
-    for col, encoder in label_encoders.items():
-        if col in df.columns:
-            try:
-                df[col] = encoder.transform(df[col].astype(str))
-            except ValueError as e:
-                logger.warning(f"Unknown category in {col}: {df[col].iloc[0]}. Using default encoding.")
-                # Handle unknown categories by using the most frequent class
-                df[col] = encoder.transform([encoder.classes_[0]])
+    # Create one-hot encoded categorical features
+    # Geography encoding
+    df['Geography_Germany'] = 1 if df['Geography'].iloc[0] == 'Germany' else 0
+    df['Geography_Spain'] = 1 if df['Geography'].iloc[0] == 'Spain' else 0
     
-    # Ensure feature order matches training
-    df = df[feature_names]
+    # Gender encoding
+    df['Gender_Male'] = 1 if df['Gender'].iloc[0] == 'Male' else 0
     
-    # Apply scaling if available
-    if scaler is not None:
-        features = scaler.transform(df)
-    else:
-        features = df.values
+    # Create the feature array in the expected order
+    expected_features = ['CreditScore', 'Geography_Germany', 'Geography_Spain', 'Gender_Male', 
+                        'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 
+                        'IsActiveMember', 'EstimatedSalary']
     
-    return features
+    # Combine numerical and categorical features
+    feature_array = df[expected_features].values
+    
+    # Apply scaling using the global scaler
+    global scaler
+    return scaler.transform(feature_array)
 
 
 def calculate_risk_level(probability: float) -> str:
@@ -842,7 +843,7 @@ async def predict_churn_batch(
                 
                 for customer_data in batch_data.customers:
                     # Preprocess data
-                    features = preprocess_customer_data(customer_data)
+                    features = model_manager.preprocess_customer_data(customer_data.dict())
                     
                     # Make prediction
                     probability = float(model.predict_proba(features)[0, 1])
@@ -868,7 +869,7 @@ async def predict_churn_batch(
             
             for customer_data in batch_data.customers:
                 # Preprocess data
-                features = preprocess_customer_data(customer_data)
+                features = model_manager.preprocess_customer_data(customer_data.dict())
                 
                 # Make prediction
                 probability = float(model.predict_proba(features)[0, 1])

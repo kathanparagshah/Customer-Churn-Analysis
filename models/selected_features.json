@@ -1,0 +1,20 @@
+[
+  "Exited",
+  "Tenure_scaled_zscore",
+  "Tenure_scaled",
+  "CreditScore_scaled_zscore",
+  "CreditScore_scaled",
+  "Age_scaled",
+  "Age_scaled_zscore",
+  "Balance_scaled_zscore",
+  "Balance_scaled",
+  "EstimatedSalary_scaled",
+  "Gender_Male",
+  "NumOfProducts_scaled_zscore",
+  "Geography_Germany",
+  "IsActiveMember",
+  "NumOfProducts_scaled",
+  "HasCrCard",
+  "EngagementScore",
+  "Geography_Spain"
+]

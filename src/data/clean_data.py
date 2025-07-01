@@ -796,7 +796,7 @@ def main():
     
     success = cleaner.run_full_pipeline()
     
-    if success:
+    if success is not None and not success.empty:
         print("\n✅ Data cleaning completed successfully!")
         print(f"📁 Processed data: {cleaner.processed_data_dir}")
         print(f"🔧 Preprocessor saved: {cleaner.models_dir}")

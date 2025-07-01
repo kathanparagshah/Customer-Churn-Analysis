@@ -1,0 +1,19 @@
+{
+  "Tenure_scaled_zscore": 0.5178006426443924,
+  "Tenure_scaled": 0.5106869475431971,
+  "CreditScore_scaled_zscore": 0.4165407460594959,
+  "CreditScore_scaled": 0.39986333805083785,
+  "Age_scaled": 0.39906373487623475,
+  "Age_scaled_zscore": 0.3879449474136974,
+  "Balance_scaled_zscore": 0.3393379627516051,
+  "Balance_scaled": 0.32970123296904214,
+  "EstimatedSalary_scaled": 0.3145077926292766,
+  "Gender_Male": 0.20025144531394512,
+  "NumOfProducts_scaled_zscore": 0.08004103227019861,
+  "Geography_Germany": 0.044255941589274844,
+  "IsActiveMember": 0.04094494047619047,
+  "NumOfProducts_scaled": 0.029819444444444454,
+  "HasCrCard": 0.016994216749118603,
+  "EngagementScore": 0.006526984126984107,
+  "Geography_Spain": 0.0016818181818181706
+}
