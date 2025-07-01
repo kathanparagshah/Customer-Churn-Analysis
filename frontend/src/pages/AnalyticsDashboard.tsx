@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -19,6 +19,9 @@ import {
   Badge,
   Icon,
   Divider,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import {
   Calendar,
@@ -32,6 +35,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Plot from 'react-plotly.js';
+import apiService from '../services/apiService';
 
 interface TimeRange {
   label: string;
@@ -55,6 +59,9 @@ interface GeographyData {
 const AnalyticsDashboard: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>('30');
   const [selectedMetric, setSelectedMetric] = useState<string>('churnRate');
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const timeRanges: TimeRange[] = [
     { label: 'Last 7 Days', value: '7', days: 7 },
@@ -64,16 +71,43 @@ const AnalyticsDashboard: React.FC = () => {
     { label: 'Last Year', value: '365', days: 365 },
   ];
 
-  // Generate mock daily data
-  const generateDailyData = (days: number): DailyMetrics[] => {
-    const data: DailyMetrics[] = [];
+  // Fetch analytics data from API
+  const fetchAnalyticsData = async (days: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiService.getAnalyticsDashboard(days);
+      setAnalyticsData(data);
+    } catch (err) {
+      console.error('Error fetching analytics data:', err);
+      setError('Failed to load analytics data. Using demo data instead.');
+      // Fallback to mock data if API fails
+      setAnalyticsData(generateMockData(days));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount and when time range changes
+  useEffect(() => {
+    fetchAnalyticsData(parseInt(selectedTimeRange));
+  }, [selectedTimeRange]);
+
+  // Handle time range change
+  const handleTimeRangeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTimeRange(event.target.value);
+  };
+
+  // Generate mock data as fallback
+  const generateMockData = (days: number) => {
+    const dailyData: DailyMetrics[] = [];
     const today = new Date();
     
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       
-      data.push({
+      dailyData.push({
         date: date.toISOString().split('T')[0],
         churnRate: 0.15 + 0.1 * Math.sin(i / 10) + 0.05 * Math.random(),
         predictions: 50 + Math.floor(30 * Math.random()),
@@ -81,10 +115,61 @@ const AnalyticsDashboard: React.FC = () => {
       });
     }
     
-    return data;
+    return {
+      daily_metrics: dailyData.map(d => ({
+        date: d.date,
+        total_predictions: d.predictions,
+        total_churners: Math.floor(d.predictions * d.churnRate),
+        avg_churn_rate: d.churnRate,
+        avg_confidence: d.accuracy,
+        high_risk_count: Math.floor(d.predictions * 0.2),
+        medium_risk_count: Math.floor(d.predictions * 0.3),
+        low_risk_count: Math.floor(d.predictions * 0.5)
+      })),
+      prediction_trends: {
+        daily_data: dailyData.map(d => ({
+          date: d.date,
+          predictions: d.predictions,
+          avg_probability: d.churnRate,
+          churners: Math.floor(d.predictions * d.churnRate)
+        })),
+        overall_stats: {
+          total_predictions: dailyData.reduce((sum, d) => sum + d.predictions, 0),
+          avg_churn_rate: dailyData.reduce((sum, d) => sum + d.churnRate, 0) / dailyData.length,
+          total_churners: dailyData.reduce((sum, d) => sum + Math.floor(d.predictions * d.churnRate), 0),
+          avg_confidence: dailyData.reduce((sum, d) => sum + d.accuracy, 0) / dailyData.length
+        }
+      },
+      risk_distribution: {
+        High: Math.floor(Math.random() * 100) + 50,
+        Medium: Math.floor(Math.random() * 150) + 100,
+        Low: Math.floor(Math.random() * 200) + 150
+      }
+    };
   };
 
-  const dailyData = generateDailyData(parseInt(selectedTimeRange));
+  // Get processed data for charts
+  const getChartData = () => {
+    if (!analyticsData) return { dailyData: [], overallStats: {}, riskDistribution: {} };
+    
+    const dailyData = analyticsData.daily_metrics || [];
+    const trends = analyticsData.prediction_trends || { daily_data: [], overall_stats: {} };
+    const riskDistribution = analyticsData.risk_distribution || { High: 0, Medium: 0, Low: 0 };
+    
+    return {
+      dailyData: dailyData.map((item: any) => ({
+        date: item.date,
+        churnRate: item.avg_churn_rate || 0,
+        predictions: item.total_predictions || 0,
+        accuracy: item.avg_confidence || 0,
+        churners: item.total_churners || 0
+      })),
+      overallStats: trends.overall_stats,
+      riskDistribution
+    };
+  };
+
+  const { dailyData, overallStats, riskDistribution } = getChartData();
 
   // Generate correlation matrix data
   const features = ['Age', 'Balance', 'CreditScore', 'NumOfProducts', 'Tenure'];
@@ -137,12 +222,21 @@ const AnalyticsDashboard: React.FC = () => {
   const currentPeriodData = dailyData.slice(-7);
   const previousPeriodData = dailyData.slice(-14, -7);
   
-  const currentAvgChurnRate = currentPeriodData.reduce((sum, d) => sum + d.churnRate, 0) / currentPeriodData.length;
-  const previousAvgChurnRate = previousPeriodData.reduce((sum, d) => sum + d.churnRate, 0) / previousPeriodData.length;
-  const churnRateChange = ((currentAvgChurnRate - previousAvgChurnRate) / previousAvgChurnRate) * 100;
+  const currentAvgChurnRate = currentPeriodData.length > 0 
+    ? currentPeriodData.reduce((sum, d) => sum + (d.churnRate || 0), 0) / currentPeriodData.length 
+    : 0;
+  const previousAvgChurnRate = previousPeriodData.length > 0 
+    ? previousPeriodData.reduce((sum, d) => sum + (d.churnRate || 0), 0) / previousPeriodData.length 
+    : 0;
+  const churnRateChange = previousAvgChurnRate > 0 
+    ? ((currentAvgChurnRate - previousAvgChurnRate) / previousAvgChurnRate) * 100 
+    : 0;
   
-  const totalPredictions = dailyData.reduce((sum, d) => sum + d.predictions, 0);
-  const avgAccuracy = dailyData.reduce((sum, d) => sum + d.accuracy, 0) / dailyData.length;
+  const totalPredictions = dailyData.reduce((sum, d) => sum + (d.predictions || 0), 0);
+  const avgAccuracy = dailyData.length > 0 
+    ? dailyData.reduce((sum, d) => sum + (d.accuracy || 0), 0) / dailyData.length 
+    : 0;
+  const totalChurners = overallStats?.total_churners || dailyData.reduce((sum, d) => sum + (d.churners || 0), 0);
 
   return (
     <VStack spacing={8} align="stretch">
@@ -152,12 +246,35 @@ const AnalyticsDashboard: React.FC = () => {
           Analytics Dashboard
         </Text>
         <Text color="secondary.600" fontSize="lg">
-          Comprehensive analytics and trends for customer churn predictions
+          Real-time analytics and trends for customer churn predictions
         </Text>
       </Box>
 
-      {/* Time Range Picker */}
-      <Card bg="white">
+      {/* Loading State */}
+      {loading && (
+        <Card bg="white">
+          <CardBody>
+            <VStack spacing={4}>
+              <Spinner size="lg" color="primary.500" />
+              <Text>Loading analytics data...</Text>
+            </VStack>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Alert status="warning">
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
+
+      {/* Main Content - Only show when not loading */}
+      {!loading && (
+        <>
+          {/* Time Range Picker */}
+          <Card bg="white">
         <CardBody>
           <HStack justify="space-between" align="center">
             <HStack>
@@ -257,13 +374,13 @@ const AnalyticsDashboard: React.FC = () => {
             borderLeft="4px solid"
             borderLeftColor="orange.500"
           >
-            <StatLabel color="secondary.600" fontSize="sm">High Risk Customers</StatLabel>
+            <StatLabel color="secondary.600" fontSize="sm">Total Churners</StatLabel>
             <StatNumber fontSize="2xl" color="primary.500">
-              {Math.floor(totalPredictions * currentAvgChurnRate)}
+              {totalChurners.toLocaleString()}
             </StatNumber>
             <StatHelpText>
               <Icon as={AlertTriangle} color="orange.500" mr={1} />
-              Require attention
+              Predicted churners
             </StatHelpText>
           </Stat>
         </GridItem>
@@ -541,6 +658,8 @@ const AnalyticsDashboard: React.FC = () => {
           </Card>
         </GridItem>
       </Grid>
+        </>
+      )}
     </VStack>
   );
 };

@@ -48,6 +48,23 @@ class ApiService {
     return this.makeRequest('/model/info');
   }
 
+  // Analytics endpoints
+  async getDailyMetrics(days = 30) {
+    return this.makeRequest(`/analytics/daily-metrics?days=${days}`);
+  }
+
+  async getPredictionTrends(days = 30) {
+    return this.makeRequest(`/analytics/prediction-trends?days=${days}`);
+  }
+
+  async getRiskDistribution(days = 30) {
+    return this.makeRequest(`/analytics/risk-distribution?days=${days}`);
+  }
+
+  async getAnalyticsDashboard(days = 30) {
+    return this.makeRequest(`/analytics/dashboard?days=${days}`);
+  }
+
   // Google OAuth (if backend endpoint exists)
   async saveUserToBackend(userData) {
     return this.makeRequest('/auth/google', {

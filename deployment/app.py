@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field, validator
 import uvicorn
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
+from analytics_db import analytics_db
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / 'src'))
@@ -963,9 +964,119 @@ async def reload_model(manager: ModelManager = Depends(get_model_manager)):
         )
 
 
+@app.get("/analytics/daily-metrics")
+async def get_daily_metrics(days: int = 30):
+    """
+    Get daily analytics metrics for the specified number of days.
+    
+    Args:
+        days (int): Number of days to retrieve (default: 30)
+        
+    Returns:
+        List[Dict]: Daily metrics data
+    """
+    try:
+        metrics = analytics_db.get_daily_metrics(days)
+        return {
+            "metrics": metrics,
+            "period_days": days,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting daily metrics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analytics error: {str(e)}"
+        )
+
+
+@app.get("/analytics/prediction-trends")
+async def get_prediction_trends(days: int = 30):
+    """
+    Get prediction trends and statistics.
+    
+    Args:
+        days (int): Number of days to analyze (default: 30)
+        
+    Returns:
+        Dict: Prediction trends and overall statistics
+    """
+    try:
+        trends = analytics_db.get_prediction_trends(days)
+        return {
+            "trends": trends,
+            "period_days": days,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting prediction trends: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analytics error: {str(e)}"
+        )
+
+
+@app.get("/analytics/risk-distribution")
+async def get_risk_distribution(days: int = 30):
+    """
+    Get risk level distribution for the specified period.
+    
+    Args:
+        days (int): Number of days to analyze (default: 30)
+        
+    Returns:
+        Dict: Risk level distribution
+    """
+    try:
+        distribution = analytics_db.get_risk_distribution(days)
+        return {
+            "distribution": distribution,
+            "period_days": days,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting risk distribution: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analytics error: {str(e)}"
+        )
+
+
+@app.get("/analytics/dashboard")
+async def get_analytics_dashboard(days: int = 30):
+    """
+    Get comprehensive analytics data for dashboard.
+    
+    Args:
+        days (int): Number of days to analyze (default: 30)
+        
+    Returns:
+        Dict: Complete analytics dashboard data
+    """
+    try:
+        # Get all analytics data
+        daily_metrics = analytics_db.get_daily_metrics(days)
+        trends = analytics_db.get_prediction_trends(days)
+        risk_distribution = analytics_db.get_risk_distribution(days)
+        
+        return {
+            "daily_metrics": daily_metrics,
+            "prediction_trends": trends,
+            "risk_distribution": risk_distribution,
+            "period_days": days,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting analytics dashboard: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analytics error: {str(e)}"
+        )
+
+
 async def log_prediction(customer_data: Dict[str, Any], prediction: Dict[str, Any]):
     """
-    Log individual prediction for monitoring and audit.
+    Log prediction for monitoring.
     
     Args:
         customer_data (Dict[str, Any]): Customer input data
@@ -980,6 +1091,9 @@ async def log_prediction(customer_data: Dict[str, Any], prediction: Dict[str, An
     
     # Log to file (in production, consider using a proper logging service)
     logger.info(f"PREDICTION_LOG: {json.dumps(log_entry)}")
+    
+    # Log to analytics database
+    analytics_db.log_prediction(log_entry)
 
 
 async def log_batch_prediction(batch_size: int, summary: Dict[str, Any]):
@@ -998,6 +1112,9 @@ async def log_batch_prediction(batch_size: int, summary: Dict[str, Any]):
     }
     
     logger.info(f"BATCH_PREDICTION_LOG: {json.dumps(log_entry)}")
+    
+    # Log to analytics database
+    analytics_db.log_batch_prediction(log_entry)
 
 
 @app.exception_handler(Exception)
