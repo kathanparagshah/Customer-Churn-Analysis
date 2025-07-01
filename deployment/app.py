@@ -27,7 +27,7 @@ from packaging import version
 
 # TestClient is only needed for testing, not for the actual API
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
@@ -70,11 +70,13 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for FastAPI app startup and shutdown.
     """
-    global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
+    global model, scaler, label_encoders, feature_names, model_loaded, model_metadata, model_manager
     
     # Startup
     logger.info("Starting Churn Prediction API...")
     try:
+        # Initialize model manager
+        model_manager = ModelManager()
         model_manager.load_model(str(model_manager.model_path))
         # Ensure global variables are properly set
         model = model_manager.model
@@ -132,6 +134,9 @@ label_encoders = {}
 feature_names = []
 model_metadata = {}
 model_loaded = False
+
+# Initialize model manager early
+model_manager = None
 
 def is_model_loaded():
     """Check if the model is loaded."""
@@ -498,18 +503,41 @@ class ModelManager:
                 f"Consider retraining the model with version metadata."
             )
     
-    def preprocess_customer_data(self, customer_data: dict) -> np.ndarray:
+    def preprocess_customer_data(self, customer_data) -> np.ndarray:
         """
-        Preprocess customer data for prediction.
+        Preprocess customer data for prediction using the model's scaler.
         
         Args:
-            customer_data: Dictionary containing customer data
+            customer_data: Customer data to preprocess (CustomerData object or dict)
             
         Returns:
             np.ndarray: Preprocessed feature array
         """
-        # Build a one-row pandas DataFrame from customer_data
-        df = pd.DataFrame([customer_data])
+        # Convert to DataFrame
+        try:
+            logger.info("preprocess_customer_data called")
+            logger.info(str(type(customer_data)))
+            is_dict = isinstance(customer_data, dict)
+            logger.info(f"is_dict: {is_dict}")
+            
+            if is_dict:
+                # Already a dictionary
+                logger.info("Using dictionary directly")
+                df = pd.DataFrame([customer_data])
+            else:
+                # CustomerData object
+                logger.info("Converting CustomerData object to dict")
+                if hasattr(customer_data, 'dict'):
+                    df = pd.DataFrame([customer_data.dict()])
+                else:
+                    # Fallback: treat as dict anyway
+                    logger.warning("Object doesn't have dict() method, treating as dict")
+                    df = pd.DataFrame([customer_data])
+        except Exception as e:
+            logger.error(f"Error in preprocess_customer_data: {e}")
+            logger.error(f"customer_data type: {type(customer_data)}")
+            logger.error(f"customer_data value: {customer_data}")
+            raise
         
         # Create one-hot encoded categorical features
         # Geography encoding
@@ -519,23 +547,44 @@ class ModelManager:
         # Gender encoding
         df['Gender_Male'] = 1 if df['Gender'].iloc[0] == 'Male' else 0
         
-        # Create the feature array in the expected order
-        expected_features = ['CreditScore', 'Geography_Germany', 'Geography_Spain', 'Gender_Male', 
-                            'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 
-                            'IsActiveMember', 'EstimatedSalary']
+        # Create feature array with correct names (matching model's expected feature names)
+        # The model expects features with '_scaled' suffix for numeric features
+        feature_dict = {}
         
-        # Combine numerical and categorical features
-        feature_array = df[expected_features].values
+        # Add numeric features with '_scaled' suffix (values will be scaled later)
+        numeric_features = ['CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'EstimatedSalary']
+        for feature in numeric_features:
+            feature_dict[f'{feature}_scaled'] = df[feature].iloc[0]
         
-        # Apply scaling to the complete feature array
-        return self.scaler.transform(feature_array)
+        # Add categorical features
+        feature_dict['Geography_Germany'] = df['Geography_Germany'].iloc[0]
+        feature_dict['Geography_Spain'] = df['Geography_Spain'].iloc[0]
+        feature_dict['Gender_Male'] = df['Gender_Male'].iloc[0]
+        
+        # Add binary features
+        feature_dict['HasCrCard'] = df['HasCrCard'].iloc[0]
+        feature_dict['IsActiveMember'] = df['IsActiveMember'].iloc[0]
+        
+        # Create DataFrame with correct feature names and order
+        feature_df = pd.DataFrame([feature_dict])
+        
+        # Ensure we have all expected features in the correct order
+        if self.feature_names:
+            # Reorder columns to match the model's expected feature order
+            feature_df = feature_df.reindex(columns=self.feature_names, fill_value=0)
+        
+        # Apply scaling to the complete feature set (scaler was trained on this format)
+        scaled_features = self.scaler.transform(feature_df)
+        
+        return scaled_features
     
-    def predict_single(self, customer_data: dict) -> dict:
+    def predict_single(self, customer_data: dict, threshold: float = 0.7) -> dict:
         """
-        Predict churn for a single customer.
+        Predict churn for a single customer with configurable threshold.
         
         Args:
             customer_data: Dictionary containing customer data
+            threshold: Decision threshold for churn prediction (default: 0.7 to reduce false alarms)
             
         Returns:
             dict: Prediction results with churn_probability, churn_prediction, risk_level, confidence
@@ -546,8 +595,8 @@ class ModelManager:
         # Compute churn_probability
         churn_probability = float(self.model.predict_proba(X)[0][1])
         
-        # Compute churn_prediction
-        churn_prediction = bool(self.model.predict(X)[0])
+        # Compute churn_prediction using custom threshold (higher threshold = fewer false alarms)
+        churn_prediction = bool(churn_probability >= threshold)
         
         # Define risk_level
         if churn_probability >= 0.66:
@@ -564,20 +613,22 @@ class ModelManager:
             'churn_probability': churn_probability,
             'churn_prediction': churn_prediction,
             'risk_level': risk_level,
-            'confidence': confidence
+            'confidence': confidence,
+            'threshold_used': threshold
         }
     
-    def predict_batch(self, customers: list[dict]) -> list[dict]:
+    def predict_batch(self, customers: list[dict], threshold: float = 0.7) -> list[dict]:
         """
-        Predict churn for multiple customers.
+        Predict churn for multiple customers with configurable threshold.
         
         Args:
             customers: List of customer data dictionaries
+            threshold: Decision threshold for churn prediction (default: 0.7 to reduce false alarms)
             
         Returns:
             list[dict]: List of prediction results
         """
-        return [self.predict_single(c) for c in customers]
+        return [self.predict_single(c, threshold) for c in customers]
     
     def get_uptime(self) -> str:
         """
@@ -593,10 +644,6 @@ class ModelManager:
         return f"{days}d {hours}h {minutes}m {seconds}s"
 
 
-# Initialize model manager
-model_manager = ModelManager()
-
-
 def get_model_manager():
     """
     Dependency to get model manager instance.
@@ -604,38 +651,7 @@ def get_model_manager():
     return model_manager
 
 
-def preprocess_customer_data(customer_data: CustomerData) -> np.ndarray:
-    """
-    Preprocess customer data for prediction.
-    
-    Args:
-        customer_data (CustomerData): Customer data to preprocess
-        
-    Returns:
-        np.ndarray: Preprocessed feature array
-    """
-    # Convert to DataFrame
-    df = pd.DataFrame([customer_data.dict()])
-    
-    # Create one-hot encoded categorical features
-    # Geography encoding
-    df['Geography_Germany'] = 1 if df['Geography'].iloc[0] == 'Germany' else 0
-    df['Geography_Spain'] = 1 if df['Geography'].iloc[0] == 'Spain' else 0
-    
-    # Gender encoding
-    df['Gender_Male'] = 1 if df['Gender'].iloc[0] == 'Male' else 0
-    
-    # Create the feature array in the expected order
-    expected_features = ['CreditScore', 'Geography_Germany', 'Geography_Spain', 'Gender_Male', 
-                        'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 
-                        'IsActiveMember', 'EstimatedSalary']
-    
-    # Combine numerical and categorical features
-    feature_array = df[expected_features].values
-    
-    # Apply scaling using the global scaler
-    global scaler
-    return scaler.transform(feature_array)
+# Removed standalone preprocess_customer_data function - using ModelManager's method instead
 
 
 def calculate_risk_level(probability: float) -> str:
@@ -742,14 +758,18 @@ async def model_info():
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_churn(
     customer_data: CustomerData,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Decision threshold for churn prediction (higher = fewer false alarms)"),
+    manager: ModelManager = Depends(get_model_manager)
 ):
     """
-    Predict churn for a single customer.
+    Predict churn for a single customer with configurable threshold.
     
     Args:
         customer_data (CustomerData): Customer data for prediction
         background_tasks (BackgroundTasks): Background tasks for logging
+        threshold (float): Decision threshold (default: 0.7 to reduce false alarms)
+        manager (ModelManager): Model manager instance
         
     Returns:
         PredictionResponse: Prediction result
@@ -763,28 +783,28 @@ async def predict_churn(
         )
     
     try:
-        # Preprocess data
-        features = preprocess_customer_data(customer_data)
+        # Debug logging
+        logger.info(f"API received customer_data type: {type(customer_data)}")
+        if isinstance(customer_data, dict):
+            customer_dict = customer_data
+        else:
+            customer_dict = customer_data.dict()
+        logger.info(f"Using dict type: {type(customer_dict)}")
+        logger.info(f"Dict content: {customer_dict}")
         
-        # Make prediction
+        # Make prediction using ModelManager with custom threshold
         if PREDICTION_LATENCY:
             with PREDICTION_LATENCY.time():
-                probability = float(model.predict_proba(features)[0, 1])
-                prediction = bool(model.predict(features)[0])
+                prediction_result = manager.predict_single(customer_dict, threshold)
         else:
-            probability = float(model.predict_proba(features)[0, 1])
-            prediction = bool(model.predict(features)[0])
-        
-        # Calculate additional metrics
-        risk_level = calculate_risk_level(probability)
-        confidence = calculate_confidence(probability)
+            prediction_result = manager.predict_single(customer_dict, threshold)
         
         # Create response
         response = PredictionResponse(
-            churn_probability=probability,
-            churn_prediction=prediction,
-            risk_level=risk_level,
-            confidence=confidence,
+            churn_probability=prediction_result['churn_probability'],
+            churn_prediction=prediction_result['churn_prediction'],
+            risk_level=prediction_result['risk_level'],
+            confidence=prediction_result['confidence'],
             timestamp=datetime.now(),
             version=model_metadata.get('version', '1.0.0')
         )
@@ -796,7 +816,7 @@ async def predict_churn(
         # Log prediction (background task)
         background_tasks.add_task(
             log_prediction,
-            customer_data.dict(),
+            customer_dict,
             json.loads(response.json())
         )
         
@@ -816,14 +836,18 @@ async def predict_churn(
 @app.post("/predict/batch")
 async def predict_churn_batch(
     batch_data: BatchCustomerData,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Decision threshold for churn prediction (higher = fewer false alarms)"),
+    manager: ModelManager = Depends(get_model_manager)
 ):
     """
-    Predict churn for multiple customers.
+    Predict churn for multiple customers with configurable threshold.
     
     Args:
         batch_data (BatchCustomerData): Batch of customer data
         background_tasks (BackgroundTasks): Background tasks for logging
+        threshold (float): Decision threshold (default: 0.7 to reduce false alarms)
+        manager (ModelManager): Model manager instance
         
     Returns:
         dict: Batch prediction results
@@ -837,63 +861,33 @@ async def predict_churn_batch(
                 detail="Model not loaded"
             )
         
+        # Convert customer data to list of dictionaries
+        customers_list = [customer.dict() for customer in batch_data.customers]
+        
+        # Make batch prediction using ModelManager with custom threshold
         if PREDICTION_LATENCY:
             with PREDICTION_LATENCY.time():
-                predictions = []
-                
-                for customer_data in batch_data.customers:
-                    # Preprocess data
-                    features = model_manager.preprocess_customer_data(customer_data.dict())
-                    
-                    # Make prediction
-                    probability = float(model.predict_proba(features)[0, 1])
-                    prediction = bool(model.predict(features)[0])
-                    
-                    # Calculate additional metrics
-                    risk_level = calculate_risk_level(probability)
-                    confidence = calculate_confidence(probability)
-                    
-                    # Create response
-                    pred_response = {
-                        "churn_probability": probability,
-                        "churn_prediction": prediction,
-                        "risk_level": risk_level,
-                        "confidence": confidence,
-                        "timestamp": datetime.now().isoformat(),
-                        "version": model_metadata.get('version', '1.0.0')
-                    }
-                    
-                    predictions.append(pred_response)
+                prediction_results = manager.predict_batch(customers_list, threshold)
         else:
-            predictions = []
-            
-            for customer_data in batch_data.customers:
-                # Preprocess data
-                features = model_manager.preprocess_customer_data(customer_data.dict())
-                
-                # Make prediction
-                probability = float(model.predict_proba(features)[0, 1])
-                prediction = bool(model.predict(features)[0])
-                
-                # Calculate additional metrics
-                risk_level = calculate_risk_level(probability)
-                confidence = calculate_confidence(probability)
-                
-                # Create response
-                pred_response = {
-                    "churn_probability": probability,
-                    "churn_prediction": prediction,
-                    "risk_level": risk_level,
-                    "confidence": confidence,
-                    "timestamp": datetime.now().isoformat(),
-                    "version": model_metadata.get('version', '1.0.0')
-                }
-                
-                predictions.append(pred_response)
+            prediction_results = manager.predict_batch(customers_list, threshold)
+        
+        # Format predictions for API response
+        predictions = []
+        for result in prediction_results:
+            pred_response = {
+                "churn_probability": result['churn_probability'],
+                "churn_prediction": result['churn_prediction'],
+                "risk_level": result['risk_level'],
+                "confidence": result['confidence'],
+                "threshold_used": result['threshold_used'],
+                "timestamp": datetime.now().isoformat(),
+                "version": model_metadata.get('version', '1.0.0')
+            }
+            predictions.append(pred_response)
         
         # Calculate summary statistics
-        probabilities = [p["churn_probability"] for p in predictions]
-        churn_predictions = [p["churn_prediction"] for p in predictions]
+        probabilities = [p["churn_probability"] for p in predictions] if predictions else []
+        churn_predictions = [p["churn_prediction"] for p in predictions] if predictions else []
         
         summary = {
             "total_customers": len(predictions),

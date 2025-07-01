@@ -47,16 +47,16 @@ def test_model_info():
 def test_single_prediction():
     """Test single customer prediction"""
     sample_customer = {
-        "credit_score": 619,
-        "geography": "France",
-        "gender": "Female",
-        "age": 42,
-        "tenure": 2,
-        "balance": 0.0,
-        "num_of_products": 1,
-        "has_cr_card": 1,
-        "is_active_member": 1,
-        "estimated_salary": 101348.88
+        "CreditScore": 619,
+        "Geography": "France",
+        "Gender": "Female",
+        "Age": 42,
+        "Tenure": 2,
+        "Balance": 0.0,
+        "NumOfProducts": 1,
+        "HasCrCard": 1,
+        "IsActiveMember": 1,
+        "EstimatedSalary": 101348.88
     }
     
     try:
@@ -85,28 +85,28 @@ def test_batch_prediction():
     """Test batch customer prediction"""
     sample_customers = [
         {
-            "credit_score": 619,
-            "geography": "France",
-            "gender": "Female",
-            "age": 42,
-            "tenure": 2,
-            "balance": 0.0,
-            "num_of_products": 1,
-            "has_cr_card": 1,
-            "is_active_member": 1,
-            "estimated_salary": 101348.88
+            "CreditScore": 619,
+            "Geography": "France",
+            "Gender": "Female",
+            "Age": 42,
+            "Tenure": 2,
+            "Balance": 0.0,
+            "NumOfProducts": 1,
+            "HasCrCard": 1,
+            "IsActiveMember": 1,
+            "EstimatedSalary": 101348.88
         },
         {
-            "credit_score": 608,
-            "geography": "Spain",
-            "gender": "Female",
-            "age": 41,
-            "tenure": 1,
-            "balance": 83807.86,
-            "num_of_products": 1,
-            "has_cr_card": 0,
-            "is_active_member": 1,
-            "estimated_salary": 112542.58
+            "CreditScore": 608,
+            "Geography": "Spain",
+            "Gender": "Female",
+            "Age": 41,
+            "Tenure": 1,
+            "Balance": 83807.86,
+            "NumOfProducts": 1,
+            "HasCrCard": 0,
+            "IsActiveMember": 1,
+            "EstimatedSalary": 112542.58
         }
     ]
     
