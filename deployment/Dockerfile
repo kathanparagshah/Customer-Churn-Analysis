@@ -34,6 +34,7 @@ RUN mkdir -p logs reports/figures models
 
 # Copy application files
 COPY deployment/app.py .
+COPY deployment/analytics_db.py .
 COPY src/ ./src/
 COPY deployment/models/churn_model.pkl ./models/churn_model.pkl
 
