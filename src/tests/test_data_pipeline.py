@@ -631,17 +631,17 @@ class TestDataCleaner:
             }
         )
 
-        is_valid, issues = data_cleaner.validate_processed_data(valid_data)
-        assert is_valid
-        assert len(issues) == 0
+        validation_result = data_cleaner.validate_processed_data(valid_data)
+        assert validation_result["is_valid"]
+        assert len(validation_result["issues"]) == 0
 
         # Create invalid data with missing values
         invalid_data = valid_data.copy()
         invalid_data.loc[0, "feature1"] = np.nan
 
-        is_valid, issues = data_cleaner.validate_processed_data(invalid_data)
-        assert not is_valid
-        assert len(issues) > 0
+        validation_result = data_cleaner.validate_processed_data(invalid_data)
+        assert not validation_result["is_valid"]
+        assert len(validation_result["issues"]) > 0
 
 
 class TestFeatureEngineer:

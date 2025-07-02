@@ -493,6 +493,33 @@ class ChurnPredictor:
         
         return evaluation_results
     
+    def evaluate_model(self, model, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+        """
+        Evaluate a single model and return metrics dictionary.
+        
+        Args:
+            model: Trained model to evaluate
+            X (pd.DataFrame): Features for evaluation
+            y (pd.Series): Target values for evaluation
+            
+        Returns:
+            Dict[str, float]: Dictionary containing accuracy, precision, recall, f1_score, roc_auc
+        """
+        # Make predictions
+        y_pred = model.predict(X)
+        y_pred_proba = model.predict_proba(X)[:, 1]
+        
+        # Calculate metrics
+        metrics = {
+            'accuracy': float(accuracy_score(y, y_pred)),
+            'precision': float(precision_score(y, y_pred)),
+            'recall': float(recall_score(y, y_pred)),
+            'f1_score': float(f1_score(y, y_pred)),
+            'roc_auc': float(roc_auc_score(y, y_pred_proba))
+        }
+        
+        return metrics
+    
     def create_evaluation_plots(self, X_test: pd.DataFrame, y_test: pd.Series) -> None:
         """
         Create comprehensive evaluation plots.

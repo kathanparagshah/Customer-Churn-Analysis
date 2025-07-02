@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import logging
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Union
 from datetime import datetime
 import joblib
 
@@ -659,7 +659,7 @@ class DataCleaner:
         
         return feature_names
     
-    def validate_processed_data(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
+    def validate_processed_data(self, df: pd.DataFrame) -> Dict[str, Union[bool, List[str]]]:
         """
         Validate the processed dataset.
         
@@ -667,7 +667,7 @@ class DataCleaner:
             df: Processed dataframe
             
         Returns:
-            Tuple of (is_valid, issues_list)
+            Dict with 'is_valid' (bool) and 'issues' (List[str])
         """
         issues = []
         
@@ -699,7 +699,7 @@ class DataCleaner:
         if issues:
             logger.warning(f"Issues found: {issues}")
         
-        return is_valid, issues
+        return {"is_valid": is_valid, "issues": issues}
     
     def save_processed_data(self, df: pd.DataFrame, filename: str = "churn_cleaned.parquet") -> Path:
         """
@@ -761,18 +761,15 @@ class DataCleaner:
             df_processed, X_processed = self.apply_preprocessing(df, fit_preprocessor=True)
             
             # Step 7: Validate processed data
-            is_valid, validation_issues = self.validate_processed_data(df_processed)
+            validation_result = self.validate_processed_data(df_processed)
             
             # Save validation report
-            validation_report = {
-                'is_valid': is_valid,
-                'issues': validation_issues
-            }
+            validation_report = validation_result
             with open(self.processed_data_dir / 'processing_validation.json', 'w') as f:
                 json.dump(validation_report, f, indent=2)
             
-            if not is_valid:
-                logger.error(f"Data validation failed after processing: {validation_issues}")
+            if not validation_result["is_valid"]:
+                logger.error(f"Data validation failed after processing: {validation_result['issues']}")
                 return None
             
             # Step 8: Save processed data
