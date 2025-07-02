@@ -23,9 +23,7 @@ model_metadata = None
 model_loaded = False
 
 
-def is_model_loaded() -> bool:
-    """Check if the model is loaded."""
-    return model_loaded
+# Global is_model_loaded() function removed - use ModelManager.is_loaded instead
 
 
 def calculate_risk_level(probability: float) -> str:
