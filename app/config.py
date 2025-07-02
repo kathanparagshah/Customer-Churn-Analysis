@@ -1,6 +1,7 @@
 """Application configuration using Pydantic BaseSettings."""
 
-from pydantic import BaseSettings, PostgresDsn, Field
+from pydantic import PostgresDsn, Field
+from pydantic_settings import BaseSettings
 from typing import List, Optional
 
 

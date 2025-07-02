@@ -60,7 +60,7 @@ async def predict_churn(
     try:
         # Make prediction
         prediction_result = model_manager.predict_single(
-            customer_data.dict(),
+            customer_data.model_dump(),
             threshold=settings.THRESHOLD
         )
         
@@ -138,7 +138,7 @@ async def predict_batch_churn(
     
     try:
         # Convert customers to dictionaries
-        customer_dicts = [customer.dict() for customer in batch_data.customers]
+        customer_dicts = [customer.model_dump() for customer in batch_data.customers]
         
         # Make batch prediction
         prediction_results = model_manager.predict_batch(
