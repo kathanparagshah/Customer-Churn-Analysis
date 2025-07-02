@@ -8,10 +8,8 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 # Add paths for imports
-src_path = Path(__file__).parent.parent
-deployment_path = src_path.parent / 'deployment'
-sys.path.insert(0, str(src_path))
-sys.path.insert(0, str(deployment_path))
+project_root = Path(__file__).parent.parent.parent  # Go up to project root
+sys.path.insert(0, str(project_root))
 # Import the FastAPI app and ModelManager from the correct location
 from app.main import app
 from app.services.model_manager import ModelManager
