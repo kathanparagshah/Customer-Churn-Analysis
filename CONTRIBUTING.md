@@ -165,6 +165,112 @@ pytest src/tests/test_api.py -v
 pytest -k "test_model" -v
 ```
 
+### Modern Testing Patterns
+
+**✅ Recommended Approach**: Use dependency injection with proper mocking
+
+```python
+import pytest
+from unittest.mock import patch
+from fastapi.testclient import TestClient
+from app.main import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+def test_predict_endpoint_success(client):
+    """Test successful prediction with loaded model."""
+    # ✅ Correct: Mock the model_manager instance directly
+    with patch('app.services.model_manager.model_manager') as mock_manager:
+        mock_manager.is_loaded = True
+        mock_manager.predict_single.return_value = {
+            "churn_probability": 0.75,
+            "risk_level": "high"
+        }
+        
+        test_data = {
+            "credit_score": 650,
+            "geography": "France",
+            "gender": "Female",
+            "age": 42,
+            "tenure": 2,
+            "balance": 83807.86,
+            "num_of_products": 1,
+            "has_cr_card": 1,
+            "is_active_member": 1,
+            "estimated_salary": 112542.58
+        }
+        
+        response = client.post("/predict", json=test_data)
+        assert response.status_code == 200
+        assert response.json()["churn_probability"] == 0.75
+
+def test_predict_endpoint_model_not_loaded(client):
+    """Test prediction endpoint when model is not loaded."""
+    with patch('app.services.model_manager.model_manager') as mock_manager:
+        mock_manager.is_loaded = False
+        
+        response = client.post("/predict", json={})
+        assert response.status_code == 503
+        assert "Model not loaded" in response.json()["detail"]
+```
+
+**❌ Deprecated Patterns**: Avoid global state patching
+
+```python
+# ❌ Don't do this - global function patching is deprecated
+with patch('deployment.app_legacy.model_loaded', return_value=True):
+    # This approach is no longer recommended
+    pass
+
+# ❌ Don't do this - patching global flags
+with patch('deployment.app_legacy.is_model_loaded', return_value=True):
+    # This approach is no longer recommended
+    pass
+```
+
+### Key Testing Guidelines
+
+1. **Always mock `app.services.model_manager.model_manager`** - This is the single source of truth for model state
+2. **Use `Depends(get_model_manager)`** - Follow the dependency injection pattern in new endpoints
+3. **Avoid global flags** - Don't patch `model_loaded` or `is_model_loaded()` functions
+4. **Test both loaded and unloaded states** - Verify 503 responses when `is_loaded = False`
+5. **Use proper fixtures** - Leverage pytest fixtures for consistent test setup
+6. **Mock external dependencies** - Always mock database connections, file I/O, and external APIs
+7. **Test error conditions** - Include tests for invalid inputs and edge cases
+
+### Legacy Test Scripts
+
+⚠️ **Deprecated**: Legacy test scripts have been moved to `legacy_tests/` directory:
+- `legacy_tests/debug_test.py`
+- `legacy_tests/isolated_test.py` 
+- `legacy_tests/minimal_test.py`
+
+These scripts are kept for reference but should **not** be used for new development. See `legacy_tests/README.md` for migration guidance.
+
+**For new API endpoints**, always follow this pattern:
+
+```python
+# In your route definition
+from app.services.model_manager import get_model_manager, ModelManager
+from fastapi import Depends, HTTPException, status
+
+@app.post("/your-endpoint")
+async def your_endpoint(
+    data: YourSchema,
+    model_manager: ModelManager = Depends(get_model_manager)
+):
+    if not model_manager.is_loaded:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model not loaded"
+        )
+    
+    result = model_manager.your_method(data)
+    return result
+```
+
 ## 🔒 Security Guidelines
 
 - Never commit secrets, API keys, or passwords

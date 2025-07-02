@@ -366,6 +366,57 @@ pytest src/tests/ -k "test_train"
 - **API Tests**: Test FastAPI endpoints and responses
 - **Data Pipeline Tests**: Test data loading, cleaning, and feature engineering
 
+#### Modern Testing Patterns
+
+**✅ Recommended Approach**: Use dependency injection with proper mocking
+
+```python
+import pytest
+from unittest.mock import patch
+from fastapi.testclient import TestClient
+from app.main import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+def test_predict_endpoint(client):
+    # ✅ Correct: Mock the model_manager instance directly
+    with patch('app.services.model_manager.model_manager') as mock_manager:
+        mock_manager.is_loaded = True
+        mock_manager.predict_single.return_value = {"churn_probability": 0.75}
+        
+        response = client.post("/predict", json=test_data)
+        assert response.status_code == 200
+        assert response.json()["churn_probability"] == 0.75
+```
+
+**❌ Deprecated Patterns**: Avoid global state patching
+
+```python
+# ❌ Don't do this - global function patching is deprecated
+with patch('deployment.app_legacy.model_loaded', return_value=True):
+    # This approach is no longer recommended
+    pass
+```
+
+#### Key Testing Guidelines
+
+1. **Always mock `app.services.model_manager.model_manager`** - This is the single source of truth for model state
+2. **Use `Depends(get_model_manager)`** - Follow the dependency injection pattern in new endpoints
+3. **Avoid global flags** - Don't patch `model_loaded` or `is_model_loaded()` functions
+4. **Test both loaded and unloaded states** - Verify 503 responses when `is_loaded = False`
+5. **Use proper fixtures** - Leverage pytest fixtures for consistent test setup
+
+#### Legacy Test Scripts
+
+⚠️ **Deprecated**: Legacy test scripts have been moved to `legacy_tests/` directory:
+- `legacy_tests/debug_test.py`
+- `legacy_tests/isolated_test.py` 
+- `legacy_tests/minimal_test.py`
+
+These scripts are kept for reference but should not be used for new development. See `legacy_tests/README.md` for migration guidance.
+
 #### Test Configuration
 
 Tests use temporary directories and mock data to ensure isolation:
@@ -387,6 +438,17 @@ Tests run automatically on:
 - **Pull requests**
 - **Multiple Python versions** (3.8, 3.9, 3.10, 3.11)
 - **Different operating systems** (Ubuntu, macOS, Windows)
+
+**CI Pipeline Commands**:
+```bash
+# Primary test suite (required)
+pytest src/tests/
+
+# Legacy tests (optional, may be removed in future)
+python legacy_tests/debug_test.py
+python legacy_tests/isolated_test.py
+python legacy_tests/minimal_test.py
+```
 
 ### Deployment
 

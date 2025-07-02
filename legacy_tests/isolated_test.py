@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
-import pytest
+"""
+Isolated Test Script for Customer Churn Analysis API
+
+This script provides comprehensive testing of the churn prediction API
+with proper mocking and isolation from external dependencies.
+
+Usage:
+    python isolated_test.py
+"""
+
 import sys
+import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import numpy as np
-from fastapi import status
-
-# Add src and deployment to path for imports
-sys.path.append(str(Path(__file__).parent))
-sys.path.append(str(Path(__file__).parent / 'src'))
-sys.path.append(str(Path(__file__).parent / 'deployment'))
-
-# Import API components
-deployment_path = str(Path(__file__).parent / 'deployment')
-if deployment_path not in sys.path:
-    sys.path.insert(0, deployment_path)
-
 from fastapi.testclient import TestClient
-from deployment.app import app
+from fastapi import status
+import pytest
+
+# Add parent directory to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from deployment.app_legacy import app
+except ImportError as e:
+    print(f"Import error: {e}")
+    print("Available paths:")
+    for path in sys.path:
+        print(f"  {path}")
+    raise
 
 @pytest.fixture
 def client():
@@ -42,29 +52,13 @@ def valid_customer_data():
 
 def test_predict_endpoint_success_comprehensive(client, valid_customer_data):
     """Test successful prediction endpoint with comprehensive checks."""
-    with patch('deployment.app.model_loaded', True), \
-         patch('deployment.app.is_model_loaded', return_value=True), \
-         patch('deployment.app.model') as mock_model, \
-         patch('deployment.app.model_metadata', {'version': '1.0.0', 'name': 'test_model'}), \
-         patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-         patch('deployment.app.get_model_manager') as mock_get_manager, \
-         patch('deployment.app.model_manager') as mock_model_manager, \
-         patch('deployment.app.analytics_db') as mock_analytics_db:
+    with patch('app.services.model_manager.model_manager') as mock_manager, \
+         patch('deployment.app_legacy.analytics_db') as mock_analytics_db:
         
-        # Mock the ModelManager instance
-        mock_manager = MagicMock()
+        # Set up mock model manager
+        mock_manager.is_loaded = True
         mock_manager.get_uptime.return_value = "0:01:23"
-        mock_get_manager.return_value = mock_manager
-        
-        # Mock preprocessing to return 11 features
-        mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]])
-        
-        # Mock model predictions
-        mock_model.predict_proba.return_value = np.array([[0.75, 0.25]])
-        mock_model.predict.return_value = np.array([0])
-        
-        # Mock the global model_manager predict_single method
-        mock_model_manager.predict_single.return_value = {
+        mock_manager.predict_single.return_value = {
             'churn_probability': 0.25,
             'churn_prediction': False,
             'risk_level': 'Low',

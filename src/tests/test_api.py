@@ -40,9 +40,8 @@ class TestAPIEndpoints:
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test single prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
@@ -50,7 +49,6 @@ class TestAPIEndpoints:
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
-            mock_get_manager.return_value = mock_model_manager
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -64,11 +62,9 @@ class TestAPIEndpoints:
     
     def test_health_endpoint(self, client):
         """Test health endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.get_uptime.return_value = "0:01:23"
-            mock_get_manager.return_value = mock_model_manager
             
             response = client.get("/health")
             assert response.status_code == status.HTTP_200_OK
@@ -80,9 +76,8 @@ class TestAPIEndpoints:
     
     def test_model_info_endpoint(self, client):
         """Test model info endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True
             mock_model_manager.get_model_info.return_value = {
                 "model_name": "ChurnPredictor",
@@ -95,7 +90,6 @@ class TestAPIEndpoints:
                 "model_path": "/path/to/model",
                 "timestamp": "2024-01-01T00:00:00"
             }
-            mock_get_manager.return_value = mock_model_manager
             
             response = client.get("/model/info")
             assert response.status_code == status.HTTP_200_OK
@@ -118,15 +112,13 @@ class TestAPIEndpoints:
     
     def test_batch_predict_endpoint_success(self, client, valid_customer_data):
         """Test batch prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_batch.return_value = [
                 {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
                 {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
-            mock_get_manager.return_value = mock_model_manager
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)
@@ -145,11 +137,9 @@ class TestAPIEndpoints:
     
     def test_cors_headers(self, client):
         """Test CORS headers."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.get_uptime.return_value = "0d 0h 0m 1s"
-            mock_get_manager.return_value = mock_model_manager
             
             response = client.get("/health")
             # CORS headers are added by FastAPI middleware, but TestClient may not simulate them
@@ -158,9 +148,8 @@ class TestAPIEndpoints:
     
     def test_content_type_headers(self, client, valid_customer_data):
         """Test content type headers."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
@@ -168,7 +157,6 @@ class TestAPIEndpoints:
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
-            mock_get_manager.return_value = mock_model_manager
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -179,9 +167,8 @@ class TestPerformanceAndLoad:
     
     def test_prediction_response_time(self, client, valid_customer_data):
         """Test prediction response time."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
@@ -189,7 +176,6 @@ class TestPerformanceAndLoad:
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
-            mock_get_manager.return_value = mock_model_manager
             
             import time
             start_time = time.time()
@@ -201,9 +187,8 @@ class TestPerformanceAndLoad:
     
     def test_large_batch_performance(self, client, valid_customer_data):
         """Test large batch prediction performance."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             # Create large batch
             large_batch = [valid_customer_data] * 100
@@ -211,7 +196,6 @@ class TestPerformanceAndLoad:
             
             # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = mock_predictions
-            mock_get_manager.return_value = mock_model_manager
             
             batch_data = {"customers": large_batch}
             response = client.post("/predict/batch", json=batch_data)
@@ -226,15 +210,13 @@ class TestAPIEndpointsComprehensive:
     
     def test_batch_predict_endpoint_success_comprehensive(self, client, valid_customer_data):
         """Test batch prediction endpoint with comprehensive validation."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
-            # Create mock model manager
-            mock_model_manager = Mock()
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Set up mock model manager
             mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_batch.return_value = [
                 {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
                 {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
-            mock_get_manager.return_value = mock_model_manager
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)

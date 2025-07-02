@@ -194,9 +194,10 @@ def mock_model_loading():
     """Mock model loading to avoid file system dependencies.
     
     This fixture automatically mocks model loading for all tests.
+    Note: Global is_model_loaded() function removed - using dependency injection instead.
     """
-    with patch('app.services.model_manager.is_model_loaded', return_value=True):
-        yield
+    # No longer patching global function - using dependency injection
+    yield
 
 
 @pytest.fixture

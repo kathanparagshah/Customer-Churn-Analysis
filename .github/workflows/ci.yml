@@ -73,6 +73,7 @@ jobs:
         KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
         KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       run: |
+        # Primary test suite using modern testing patterns
         pytest src/tests/ -v --cov=src --cov-report=xml --cov-report=html
     
     - name: Upload coverage to Codecov
@@ -82,6 +83,42 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+
+  legacy-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true  # Don't fail CI if legacy tests fail
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run legacy test scripts
+      run: |
+        echo "⚠️  Running deprecated legacy test scripts for compatibility verification"
+        echo "These tests are deprecated and may be removed in future versions"
+        
+        # Run legacy scripts with error handling
+        echo "Running debug_test.py..."
+        python legacy_tests/debug_test.py || echo "❌ debug_test.py failed"
+        
+        echo "Running isolated_test.py..."
+        python legacy_tests/isolated_test.py || echo "❌ isolated_test.py failed"
+        
+        echo "Running minimal_test.py..."
+        python legacy_tests/minimal_test.py || echo "❌ minimal_test.py failed"
+        
+        echo "✅ Legacy test execution completed (failures are non-blocking)"
 
   build:
     needs: test

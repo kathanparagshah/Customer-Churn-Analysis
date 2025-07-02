@@ -24,22 +24,49 @@ warnings.warn(
 try:
     # Import the new modular FastAPI application
     from app.main import app
-    
-    # Import model-related components for backward compatibility
     from app.services.model_manager import (
-    ModelManager, get_model_manager, is_model_loaded, model_manager,
-    model, scaler, label_encoders, feature_names, model_metadata, model_loaded
-)
+        ModelManager, get_model_manager, model_manager
+    )
     from app.models.schemas import (
         CustomerData, BatchCustomerData, PredictionResponse, BatchPredictionResponse
     )
+    
+    # Import analytics database for backward compatibility
+    from deployment.analytics_db import analytics_db
+    
+    # Create compatibility variables for legacy code
+    # These will be None initially but can be accessed through model_manager
+    model = None
+    scaler = None
+    label_encoders = None
+    feature_names = None
+    model_loaded = False
+    model_metadata = {}
+    
+    # Update compatibility variables when accessed
+    def _update_legacy_vars():
+        global model, scaler, label_encoders, feature_names, model_loaded, model_metadata
+        model = model_manager.model
+        scaler = model_manager.scaler
+        label_encoders = model_manager.label_encoders
+        feature_names = model_manager.feature_names
+        model_loaded = model_manager.is_loaded
+        model_metadata = {
+            'model_name': model_manager.model_name,
+            'version': model_manager.version,
+            'training_date': model_manager.training_date,
+            'performance_metrics': model_manager.performance_metrics
+        }
+    
+    # Initialize legacy variables
+    _update_legacy_vars()
     
     # Re-export for backward compatibility
     __all__ = [
         'app', 'CustomerData', 'BatchCustomerData', 'PredictionResponse',
         'BatchPredictionResponse', 'ModelManager', 'get_model_manager',
-        'is_model_loaded', 'model_manager', 'model', 'scaler', 'label_encoders', 
-        'feature_names', 'model_metadata', 'model_loaded'
+        'model_manager', 'model', 'scaler', 'label_encoders', 
+        'feature_names', 'model_metadata', 'model_loaded', 'analytics_db'
     ]
     
 except ImportError as e:

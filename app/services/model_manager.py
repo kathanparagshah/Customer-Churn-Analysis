@@ -14,15 +14,6 @@ from ..models.schemas import CustomerData
 
 logger = get_logger("model_manager")
 
-# Global model state for backward compatibility
-model = None
-scaler = None
-label_encoders = None
-feature_names = None
-model_metadata = None
-model_loaded = False
-
-
 # Global is_model_loaded() function removed - use ModelManager.is_loaded instead
 
 
@@ -75,12 +66,8 @@ class ModelManager:
         # Set default model path from settings
         self.model_path = Path(settings.MODEL_PATH)
         
-        # Try to load model on initialization
-        if self.model_path.exists():
-            try:
-                self.load_model(str(self.model_path))
-            except Exception as e:
-                logger.warning(f"Failed to load model on initialization: {e}")
+        # Do not auto-load model on initialization to allow test control
+        # Model must be explicitly loaded via load_model() method
     
     def load_model(self, model_path: str) -> bool:
         """Load the trained model and preprocessing components.
@@ -94,7 +81,6 @@ class ModelManager:
         Raises:
             FileNotFoundError: If the model file doesn't exist
         """
-        global model, scaler, label_encoders, feature_names, model_metadata, model_loaded
         
         model_file_path = Path(model_path)
         if not model_file_path.exists():
@@ -106,27 +92,18 @@ class ModelManager:
             # Load the model package
             model_package = joblib.load(model_file_path)
             
-            # Extract components
-            model = model_package['model']
-            scaler = model_package.get('scaler')
-            label_encoders = model_package.get('label_encoders', {})
-            feature_names = model_package.get('feature_names', [])
+            # Extract components and update instance attributes
+            self.model = model_package['model']
+            self.scaler = model_package.get('scaler')
+            self.label_encoders = model_package.get('label_encoders', {})
+            self.feature_names = model_package.get('feature_names', [])
             model_metadata = model_package.get('metadata', {})
-            
-            # Update instance attributes
-            self.model = model
-            self.scaler = scaler
-            self.feature_names = feature_names
-            self.label_encoders = label_encoders
             self.model_name = model_metadata.get('model_name', 'Unknown')
             self.version = model_metadata.get('version', '1.0.0')
             self.training_date = model_metadata.get('training_date', 'Unknown')
             self.performance_metrics = model_metadata.get('performance_metrics', {})
             self.model_path = model_file_path
             self.is_loaded = True
-            
-            # Update global state
-            model_loaded = True
             
             logger.info(f"Model loaded successfully: {self.model_name} v{self.version}")
             logger.info(f"Features: {len(self.feature_names)} features")
@@ -140,16 +117,6 @@ class ModelManager:
     
     def unload_model(self) -> None:
         """Unload the current model and reset all state."""
-        global model, scaler, label_encoders, feature_names, model_metadata, model_loaded
-        
-        # Reset global variables
-        model = None
-        scaler = None
-        label_encoders = None
-        feature_names = None
-        model_metadata = None
-        model_loaded = False
-        
         # Reset instance attributes
         self.model = None
         self.scaler = None

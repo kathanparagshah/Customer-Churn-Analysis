@@ -994,9 +994,11 @@ class TestAPIEndpointsComprehensive:
     
     def test_predict_endpoint_model_not_loaded(self, client, valid_customer_data):
         """Test prediction endpoint when model is not loaded."""
-        with patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
-            # Mock the is_model_loaded function in the predict route module
-            mock_is_loaded.return_value = False
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+            # Mock the ModelManager instance with is_loaded = False
+            mock_manager = Mock()
+            mock_manager.is_loaded = False
+            mock_get_manager.return_value = mock_manager
             
             response = client.post("/predict", json=valid_customer_data)
             
