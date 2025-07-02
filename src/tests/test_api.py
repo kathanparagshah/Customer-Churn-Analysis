@@ -40,16 +40,18 @@ class TestAPIEndpoints:
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test successful prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
-                'churn_prediction': 0,
+                'churn_prediction': False,
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -79,35 +81,54 @@ class TestAPIEndpoints:
     
     def test_model_info_endpoint(self, client):
         """Test model info endpoint."""
-        response = client.get("/model/info")
-        assert response.status_code == status.HTTP_200_OK
-        
-        data = response.json()
-        assert "model_name" in data
-        assert "version" in data
-        assert "features" in data
-        assert "model_type" in data
-        assert "feature_count" in data
-        assert "preprocessing_components" in data
-        assert "performance_metrics" in data
-        assert "model_path" in data
-        assert "timestamp" in data
-        
-        # Verify the structure is correct
-        assert isinstance(data["features"], list)
-        assert isinstance(data["feature_count"], int)
-        assert isinstance(data["preprocessing_components"], dict)
-    
-    def test_batch_predict_endpoint_success(self, client, valid_customer_data):
-        """Test batch prediction endpoint."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True
+            mock_model_manager.get_model_info.return_value = {
+                "model_name": "ChurnPredictor",
+                "version": "1.0.0",
+                "training_date": "2024-01-01",
+                "model_type": "LogisticRegression",
+                "features": ["feature1", "feature2"],
+                "preprocessing_components": {"scaler": "StandardScaler"},
+                "performance_metrics": {"accuracy": 0.85},
+                "model_path": "/path/to/model",
+                "timestamp": "2024-01-01T00:00:00"
+            }
+            mock_get_manager.return_value = mock_model_manager
+            
+            response = client.get("/model/info")
+            assert response.status_code == status.HTTP_200_OK
+            
+            data = response.json()
+            assert "model_name" in data
+            assert "version" in data
+            assert "features" in data
+            assert "model_type" in data
+            assert "feature_count" in data
+            assert "preprocessing_components" in data
+            assert "performance_metrics" in data
+            assert "model_path" in data
+            assert "timestamp" in data
+            
+            # Verify the structure is correct
+            assert isinstance(data["features"], list)
+            assert isinstance(data["feature_count"], int)
+            assert isinstance(data["preprocessing_components"], dict)
+    
+    def test_batch_predict_endpoint_success(self, client, valid_customer_data):
+        """Test batch prediction endpoint."""
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+            # Create mock model manager
+            mock_model_manager = Mock()
             mock_model_manager.predict_batch.return_value = [
-                {'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7},
-                {'churn_probability': 0.75, 'churn_prediction': 1, 'risk_level': 'High', 'confidence': 0.85, 'threshold_used': 0.7}
+                {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
+                {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)
@@ -139,16 +160,18 @@ class TestAPIEndpoints:
     
     def test_content_type_headers(self, client, valid_customer_data):
         """Test content type headers."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
-                'churn_prediction': 0,
+                'churn_prediction': False,
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -159,16 +182,18 @@ class TestPerformanceAndLoad:
     
     def test_prediction_response_time(self, client, valid_customer_data):
         """Test prediction response time."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
-                'churn_prediction': 0,
+                'churn_prediction': False,
                 'risk_level': 'Low',
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             import time
             start_time = time.time()
@@ -180,16 +205,18 @@ class TestPerformanceAndLoad:
     
     def test_large_batch_performance(self, client, valid_customer_data):
         """Test large batch prediction performance."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             # Create large batch
             large_batch = [valid_customer_data] * 100
-            mock_predictions = [{'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7}] * 100
+            mock_predictions = [{'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75}] * 100
             
             # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = mock_predictions
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             batch_data = {"customers": large_batch}
             response = client.post("/predict/batch", json=batch_data)
@@ -203,17 +230,17 @@ class TestAPIEndpointsComprehensive:
     """Comprehensive API endpoint tests."""
     
     def test_batch_predict_endpoint_success_comprehensive(self, client, valid_customer_data):
-        """Test comprehensive batch prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
+        """Test batch prediction endpoint with comprehensive validation."""
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
+             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
-            # Setup mocks
-            mock_predictions = [
-                {'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7},
-                {'churn_probability': 0.75, 'churn_prediction': 1, 'risk_level': 'High', 'confidence': 0.85, 'threshold_used': 0.7}
+            mock_model_manager.predict_batch.return_value = [
+                {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
+                {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
-            mock_model_manager.predict_batch.return_value = mock_predictions
             mock_get_manager.return_value = mock_model_manager
+            mock_is_loaded.return_value = True
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)
@@ -222,6 +249,21 @@ class TestAPIEndpointsComprehensive:
             data = response.json()
             assert "predictions" in data
             assert len(data["predictions"]) == 2
+            
+            # Validate each prediction structure
+            for prediction in data["predictions"]:
+                assert "churn_probability" in prediction
+                assert "churn_prediction" in prediction
+                assert "risk_level" in prediction
+                assert "confidence" in prediction
+                assert "timestamp" in prediction
+                assert "version" in prediction
+                assert isinstance(prediction["churn_probability"], float)
+                assert isinstance(prediction["churn_prediction"], bool)
+                assert prediction["risk_level"] in ["Low", "Medium", "High"]
+                assert isinstance(prediction["confidence"], float)
+                assert isinstance(prediction["timestamp"], float)
+                assert isinstance(prediction["version"], str)
 
 class TestModelManager:
     """Test cases for ModelManager class."""
