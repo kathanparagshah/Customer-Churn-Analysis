@@ -170,11 +170,13 @@ If you want to implement the Google OAuth backend endpoint:
 
 1. **Add to `deployment/app.py`**:
    ```python
-   @app.post("/auth/google")
+   @api.post("/auth/google")
    async def google_auth(user_data: dict):
        # Implement user data saving logic
        return {"success": True, "message": "User saved successfully"}
    ```
+   
+   Note: The endpoint will be accessible at `/api/auth/google` due to the API router prefix.
 
 2. **Update CORS if needed** to include authentication headers
 

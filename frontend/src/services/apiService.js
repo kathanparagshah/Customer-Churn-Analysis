@@ -67,7 +67,7 @@ class ApiService {
 
   // Google OAuth (if backend endpoint exists)
   async saveUserToBackend(userData) {
-    return this.makeRequest('/auth/google', {
+    return this.makeRequest('/api/auth/google', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

@@ -27,7 +27,7 @@ from packaging import version
 
 # TestClient is only needed for testing, not for the actual API
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -126,6 +126,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Create API router
+api = APIRouter(prefix="/api", tags=["api"])
 
 # Add CORS middleware
 app.add_middleware(
@@ -1138,19 +1141,19 @@ async def log_batch_prediction(batch_size: int, summary: Dict[str, Any]):
     analytics_db.log_batch_prediction(log_entry)
 
 
-@app.post("/auth/google")
+@api.post("/auth/google", status_code=200)
 async def google_auth_stub():
     """
     Stub endpoint for Google OAuth authentication.
-    This endpoint is not yet implemented but returns a placeholder response.
-    
-    Returns:
-        Dict: Placeholder response indicating the endpoint is a stub
+    Returns a placeholder response.
     """
     return {
         "message": "Google auth endpoint stub – not yet implemented",
         "timestamp": datetime.now().isoformat()
     }
+
+# Include the API router
+app.include_router(api)
 
 
 @app.exception_handler(Exception)

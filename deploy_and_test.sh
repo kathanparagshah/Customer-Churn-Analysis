@@ -47,7 +47,7 @@ echo "Staging all changes..."
 git add .
 
 echo "Committing changes..."
-git commit -m "🔧 update API URLs & stub /auth/google" || {
+git commit -m "🔧 Move Google auth stub to /api prefix" || {
     print_warning "No changes to commit or commit failed"
 }
 
@@ -77,7 +77,7 @@ print_step "3. Waiting 10 seconds before testing auth endpoint"
 sleep 10
 
 echo "Testing stubbed auth endpoint..."
-AUTH_RESPONSE=$(curl -i -s -X POST "$BACKEND_URL/auth/google" \
+AUTH_RESPONSE=$(curl -i -s -X POST "$BACKEND_URL/api/auth/google" \
     -H "Content-Type: application/json" \
     -d '{}' || echo "CURL_FAILED")
 
