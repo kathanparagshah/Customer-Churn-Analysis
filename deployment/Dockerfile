@@ -36,7 +36,8 @@ RUN mkdir -p logs reports/figures models
 COPY deployment/app.py .
 COPY deployment/analytics_db.py .
 COPY src/ ./src/
-COPY deployment/models/churn_model.pkl ./models/churn_model.pkl
+COPY app/ ./app/
+COPY deployment/models/ ./models/
 
 # Set permissions
 RUN chown -R appuser:appuser /app
@@ -44,12 +45,17 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
+# Environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV MODEL_PATH=/app/models/churn_model.pkl
+
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# Health check - optimized for fast response
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://127.0.0.1:8000/health || exit 1
 
-# Set entrypoint
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set entrypoint - use the new modular app structure directly
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
