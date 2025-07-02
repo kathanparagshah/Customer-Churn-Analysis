@@ -40,10 +40,10 @@ class TestAPIEndpoints:
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test single prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': False,
@@ -51,7 +51,6 @@ class TestAPIEndpoints:
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -119,16 +118,15 @@ class TestAPIEndpoints:
     
     def test_batch_predict_endpoint_success(self, client, valid_customer_data):
         """Test batch prediction endpoint."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_batch.return_value = [
                 {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
                 {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)
@@ -160,10 +158,10 @@ class TestAPIEndpoints:
     
     def test_content_type_headers(self, client, valid_customer_data):
         """Test content type headers."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': False,
@@ -171,7 +169,6 @@ class TestAPIEndpoints:
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             response = client.post("/predict", json=valid_customer_data)
             assert response.status_code == status.HTTP_200_OK
@@ -182,10 +179,10 @@ class TestPerformanceAndLoad:
     
     def test_prediction_response_time(self, client, valid_customer_data):
         """Test prediction response time."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': False,
@@ -193,7 +190,6 @@ class TestPerformanceAndLoad:
                 'confidence': 0.75
             }
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             import time
             start_time = time.time()
@@ -205,10 +201,10 @@ class TestPerformanceAndLoad:
     
     def test_large_batch_performance(self, client, valid_customer_data):
         """Test large batch prediction performance."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             # Create large batch
             large_batch = [valid_customer_data] * 100
             mock_predictions = [{'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75}] * 100
@@ -216,7 +212,6 @@ class TestPerformanceAndLoad:
             # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = mock_predictions
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             batch_data = {"customers": large_batch}
             response = client.post("/predict/batch", json=batch_data)
@@ -231,16 +226,15 @@ class TestAPIEndpointsComprehensive:
     
     def test_batch_predict_endpoint_success_comprehensive(self, client, valid_customer_data):
         """Test batch prediction endpoint with comprehensive validation."""
-        with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
+        with patch('app.services.model_manager.get_model_manager') as mock_get_manager:
             # Create mock model manager
             mock_model_manager = Mock()
+            mock_model_manager.is_loaded = True  # Set is_loaded property directly
             mock_model_manager.predict_batch.return_value = [
                 {'churn_probability': 0.25, 'churn_prediction': False, 'risk_level': 'Low', 'confidence': 0.75},
                 {'churn_probability': 0.75, 'churn_prediction': True, 'risk_level': 'High', 'confidence': 0.85}
             ]
             mock_get_manager.return_value = mock_model_manager
-            mock_is_loaded.return_value = True
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
             response = client.post("/predict/batch", json=batch_data)
