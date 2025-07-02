@@ -1,6 +1,6 @@
 """Model information endpoint for retrieving model metadata."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..models.schemas import ModelInfoResponse
 from ..services.model_manager import get_model_manager, ModelManager
@@ -24,8 +24,8 @@ async def get_model_info(model_manager: ModelManager = Depends(get_model_manager
     if not model_manager.is_loaded:
         logger.warning("Model info requested but model not loaded")
         raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please ensure the model is properly initialized."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model not loaded"
         )
     
     try:

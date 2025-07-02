@@ -4,7 +4,7 @@ import time
 import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 
 from ..models.schemas import (
     CustomerData, 
@@ -51,8 +51,8 @@ async def predict_churn(
         ERROR_COUNTER.inc()
         logger.warning("Prediction requested but model not loaded")
         raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please ensure the model is properly initialized."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model not loaded"
         )
     
     start_time = time.time()
@@ -128,8 +128,8 @@ async def predict_batch_churn(
         ERROR_COUNTER.inc()
         logger.warning("Batch prediction requested but model not loaded")
         raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please ensure the model is properly initialized."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model not loaded"
         )
     
     start_time = time.time()
