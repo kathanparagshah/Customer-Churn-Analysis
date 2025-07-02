@@ -99,16 +99,40 @@ class CustomerData(BaseModel):
             raise ValueError('Gender must be either Male or Female')
         return v
     
-    @validator('HasCrCard', 'IsActiveMember')
-    def validate_binary_fields(cls, v):
+    @validator('HasCrCard')
+    def validate_has_cr_card(cls, v):
         if v not in [0, 1]:
-            raise ValueError('Value must be 0 or 1')
+            raise ValueError('HasCrCard must be 0 or 1')
+        return v
+    
+    @validator('IsActiveMember')
+    def validate_is_active_member(cls, v):
+        if v not in [0, 1]:
+            raise ValueError('IsActiveMember must be 0 or 1')
         return v
     
     @validator('NumOfProducts')
     def validate_num_products(cls, v):
         if not 1 <= v <= 4:
             raise ValueError('Number of products must be between 1 and 4')
+        return v
+    
+    @validator('Tenure')
+    def validate_tenure(cls, v):
+        if not 0 <= v <= 10:
+            raise ValueError('Tenure must be between 0 and 10')
+        return v
+    
+    @validator('Balance')
+    def validate_balance(cls, v):
+        if v < 0:
+            raise ValueError('Balance must be non-negative')
+        return v
+    
+    @validator('EstimatedSalary')
+    def validate_estimated_salary(cls, v):
+        if v <= 0:
+            raise ValueError('Estimated salary must be positive')
         return v
 
 
@@ -171,6 +195,7 @@ class HealthResponse(BaseModel):
     uptime: str = Field(..., description="Service uptime")
     timestamp: str = Field(..., description="Health check timestamp")
     model_status: Optional[Dict[str, Any]] = Field(None, description="Model status information")
+    dependencies: Optional[Dict[str, Any]] = Field(None, description="Dependency health status")
 
 
 class ModelInfoResponse(BaseModel):

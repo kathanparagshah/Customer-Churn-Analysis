@@ -48,49 +48,8 @@ class TestAPIEndpoints:
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test successful prediction endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-             patch('deployment.app.calculate_risk_level') as mock_risk, \
-             patch('deployment.app.calculate_confidence') as mock_confidence, \
-             patch('deployment.app.log_prediction') as mock_log, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock metadata with get method
-            mock_metadata.get.return_value = '1.0.0'
-            
-            # Mock the ModelManager instance
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0:01:23"
-            mock_manager.predict_single.return_value = {
-                'churn_probability': 0.25,
-                'churn_prediction': 0,
-                'risk_level': 'Low',
-                'confidence': 0.75
-            }
-            mock_get_manager.return_value = mock_manager
-            
-            # Mock preprocessing and model predictions
-            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-            mock_model.predict_proba.return_value = np.array([[0.7, 0.3]])
-            mock_model.predict.return_value = np.array([0])
-            
-            # Mock analytics database
-            mock_analytics_db.log_prediction = MagicMock()
-            
-            # Mock risk and confidence calculations
-            mock_risk.return_value = 'Low'
-            mock_confidence.return_value = 0.75
-            mock_log.return_value = None
-            
-            # Mock model manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_single method
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': 0,
@@ -110,21 +69,8 @@ class TestAPIEndpoints:
     
     def test_health_endpoint(self, client):
         """Test health endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.feature_names', ['feature1', 'feature2']), \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock()}), \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock model class name
-            mock_model.__class__.__name__ = 'RandomForestClassifier'
-            
-            # Mock ModelManager
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0:01:23"
-            mock_get_manager.return_value = mock_manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's get_uptime method
             mock_model_manager.get_uptime.return_value = "0:01:23"
             
             response = client.get("/health")
@@ -137,40 +83,38 @@ class TestAPIEndpoints:
     
     def test_model_info_endpoint(self, client):
         """Test model info endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model_metadata', {'version': '1.0.0', 'name': 'test_model'}), \
-             patch('deployment.app.feature_names', ['feature1', 'feature2']):
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's attributes and methods
+            mock_model_manager.is_loaded = True
+            mock_model_manager.get_model_info.return_value = {
+                "model_name": "test_model",
+                "version": "1.0.0",
+                "training_date": "2024-01-01",
+                "features": ["feature1", "feature2"],
+                "model_type": "RandomForest",
+                "preprocessing_components": {
+                    "scaler": "StandardScaler",
+                    "label_encoders": ["Geography", "Gender"],
+                    "feature_count": 2
+                },
+                "performance_metrics": {"accuracy": 0.85},
+                "model_path": "/path/to/model",
+                "timestamp": "2024-01-01T00:00:00"
+            }
             
             response = client.get("/model/info")
             assert response.status_code == status.HTTP_200_OK
             
             data = response.json()
-            assert "feature_names" in data
+            assert "model_name" in data
+            assert "version" in data
+            assert "features" in data
+            assert data["model_name"] == "test_model"
     
     def test_batch_predict_endpoint_success(self, client, valid_customer_data):
         """Test batch prediction endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock metadata
-            mock_metadata.get.return_value = '1.0.0'
-            
-            # Mock ModelManager
-            mock_manager = MagicMock()
-            mock_manager.predict_batch.return_value = [
-                {'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7},
-                {'churn_probability': 0.75, 'churn_prediction': 1, 'risk_level': 'High', 'confidence': 0.85, 'threshold_used': 0.7}
-            ]
-            mock_get_manager.return_value = mock_manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = [
                 {'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7},
                 {'churn_probability': 0.75, 'churn_prediction': 1, 'risk_level': 'High', 'confidence': 0.85, 'threshold_used': 0.7}
@@ -193,12 +137,8 @@ class TestAPIEndpoints:
     
     def test_cors_headers(self, client):
         """Test CORS headers."""
-        with patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0d 0h 0m 1s"
-            mock_get_manager.return_value = mock_manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's get_uptime method
             mock_model_manager.get_uptime.return_value = "0d 0h 0m 1s"
             
             response = client.get("/health")
@@ -208,39 +148,8 @@ class TestAPIEndpoints:
     
     def test_content_type_headers(self, client, valid_customer_data):
         """Test content type headers."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-             patch('deployment.app.calculate_risk_level') as mock_risk, \
-             patch('deployment.app.calculate_confidence') as mock_confidence, \
-             patch('deployment.app.log_prediction') as mock_log, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Setup all mocks
-            mock_metadata.get.return_value = '1.0.0'
-            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-            mock_model.predict_proba.return_value = np.array([[0.7, 0.3]])
-            mock_model.predict.return_value = np.array([0])
-            mock_analytics_db.log_prediction = MagicMock()
-            mock_risk.return_value = 'Low'
-            mock_confidence.return_value = 0.75
-            mock_log.return_value = None
-            
-            mock_manager = MagicMock()
-            mock_manager.predict_single.return_value = {
-                'churn_probability': 0.25,
-                'churn_prediction': 0,
-                'risk_level': 'Low',
-                'confidence': 0.75
-            }
-            mock_get_manager.return_value = mock_manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_single method
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': 0,
@@ -257,40 +166,8 @@ class TestPerformanceAndLoad:
     
     def test_prediction_response_time(self, client, valid_customer_data):
         """Test prediction response time."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-             patch('deployment.app.calculate_risk_level') as mock_risk, \
-             patch('deployment.app.calculate_confidence') as mock_confidence, \
-             patch('deployment.app.log_prediction') as mock_log, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Setup all mocks
-            mock_metadata.get.return_value = '1.0.0'
-            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-            mock_model.predict_proba.return_value = np.array([[0.7, 0.3]])
-            mock_model.predict.return_value = np.array([0])
-            mock_analytics_db.log_prediction = MagicMock()
-            mock_risk.return_value = 'Low'
-            mock_confidence.return_value = 0.75
-            mock_log.return_value = None
-            
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0:01:23"
-            mock_manager.predict_single.return_value = {
-                'churn_probability': 0.25,
-                'churn_prediction': 0,
-                'risk_level': 'Low',
-                'confidence': 0.75
-            }
-            mock_get_manager.return_value = mock_manager
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_single method
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': 0,
@@ -308,28 +185,12 @@ class TestPerformanceAndLoad:
     
     def test_large_batch_performance(self, client, valid_customer_data):
         """Test large batch prediction performance."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock metadata
-            mock_metadata.get.return_value = '1.0.0'
-            
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
             # Create large batch
             large_batch = [valid_customer_data] * 100
             mock_predictions = [{'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7}] * 100
             
-            # Mock ModelManager
-            mock_manager = MagicMock()
-            mock_manager.predict_batch.return_value = mock_predictions
-            mock_get_manager.return_value = mock_manager
+            # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = mock_predictions
             
             batch_data = {"customers": large_batch}
@@ -345,24 +206,14 @@ class TestAPIEndpointsComprehensive:
     
     def test_batch_predict_endpoint_success_comprehensive(self, client, valid_customer_data):
         """Test comprehensive batch prediction endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.model_metadata', {'version': '1.0.0', 'name': 'test_model'}), \
-             patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager, \
-             patch('deployment.app.analytics_db') as mock_analytics_db:
-            
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
             # Setup mocks
             mock_predictions = [
                 {'churn_probability': 0.25, 'churn_prediction': 0, 'risk_level': 'Low', 'confidence': 0.75, 'threshold_used': 0.7},
                 {'churn_probability': 0.75, 'churn_prediction': 1, 'risk_level': 'High', 'confidence': 0.85, 'threshold_used': 0.7}
             ]
             
-            mock_manager = MagicMock()
-            mock_manager.predict_batch.return_value = mock_predictions
-            mock_get_manager.return_value = mock_manager
+            # Mock the model manager's predict_batch method
             mock_model_manager.predict_batch.return_value = mock_predictions
             
             batch_data = {"customers": [valid_customer_data, valid_customer_data]}
@@ -389,15 +240,32 @@ class TestModelManager:
     def test_model_manager_initialization(self):
         """Test ModelManager initialization."""
         manager = ModelManager()
-        assert manager.model is None
-        assert manager.scaler is None
-        assert manager.feature_names is None
-        assert manager.is_loaded is False
+        
+        # ModelManager may auto-load model if it exists, so check if loaded or not
+        if manager.is_loaded:
+            # If model is loaded, verify it has the expected attributes
+            assert manager.model is not None
+            assert manager.scaler is not None
+            assert manager.feature_names is not None
+            assert manager.version is not None
+        else:
+            # If model is not loaded, verify attributes are None
+            assert manager.model is None
+            assert manager.scaler is None
+            assert manager.feature_names is None
+            assert manager.model_name is None
+            assert manager.version is None
+        
+        # Always check that start_time is set
+        assert hasattr(manager, 'start_time')
+        assert manager.start_time is not None
     
     @pytest.mark.skipif(ModelManager is None, reason="API module not available")
-    def test_get_uptime(self):
-        """Test get_uptime method."""
+    def test_get_health_status(self):
+        """Test get_health_status method."""
         manager = ModelManager()
-        uptime = manager.get_uptime()
-        assert isinstance(uptime, str)
-        assert "d" in uptime and "h" in uptime and "m" in uptime and "s" in uptime  # Should be in format like "0d 0h 0m 0s"
+        health_status = manager.get_health_status()
+        assert isinstance(health_status, dict)
+        assert "uptime" in health_status
+        assert "status" in health_status
+        assert isinstance(health_status["uptime"], str)

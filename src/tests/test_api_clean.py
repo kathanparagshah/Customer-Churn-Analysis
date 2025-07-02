@@ -47,54 +47,15 @@ class TestAPIEndpoints:
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
         """Test successful prediction endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.is_model_loaded', return_value=True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock(), 'Gender': MagicMock()}), \
-             patch('deployment.app.feature_names', ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']), \
-             patch('deployment.app.model_metadata') as mock_metadata, \
-             patch('deployment.app.analytics_db') as mock_analytics_db, \
-             patch('deployment.app.ModelManager.preprocess_customer_data') as mock_preprocess, \
-             patch('deployment.app.calculate_risk_level') as mock_risk, \
-             patch('deployment.app.calculate_confidence') as mock_confidence, \
-             patch('deployment.app.log_prediction') as mock_log, \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock metadata with get method
-            mock_metadata.get.return_value = '1.0.0'
-            
-            # Mock the ModelManager instance
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0:01:23"
-            mock_manager.predict_single.return_value = {
-                'churn_probability': 0.25,
-                'churn_prediction': 0,
-                'risk_level': 'Low',
-                'confidence': 0.75
-            }
-            mock_get_manager.return_value = mock_manager
-            
-            # Mock preprocessing and model predictions
-            mock_preprocess.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-            mock_model.predict_proba.return_value = np.array([[0.7, 0.3]])
-            mock_model.predict.return_value = np.array([0])
-            
-            # Mock analytics database
-            mock_analytics_db.log_prediction = MagicMock()
-            
-            # Mock risk and confidence calculations
-            mock_risk.return_value = 'Low'
-            mock_confidence.return_value = 0.75
-            mock_log.return_value = None
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
             
             # Mock model manager
             mock_model_manager.predict_single.return_value = {
                 'churn_probability': 0.25,
                 'churn_prediction': 0,
                 'risk_level': 'Low',
-                'confidence': 0.75
+                'confidence': 0.75,
+                'model_version': '1.0.0'
             }
             
             response = client.post("/predict", json=valid_customer_data)
@@ -109,21 +70,9 @@ class TestAPIEndpoints:
     
     def test_health_endpoint(self, client):
         """Test health endpoint."""
-        with patch('deployment.app.model_loaded', True), \
-             patch('deployment.app.model') as mock_model, \
-             patch('deployment.app.feature_names', ['feature1', 'feature2']), \
-             patch('deployment.app.scaler') as mock_scaler, \
-             patch('deployment.app.label_encoders', {'Geography': MagicMock()}), \
-             patch('deployment.app.get_model_manager') as mock_get_manager, \
-             patch('deployment.app.model_manager') as mock_model_manager:
-            
-            # Mock model class name
-            mock_model.__class__.__name__ = 'RandomForestClassifier'
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
             
             # Mock ModelManager
-            mock_manager = MagicMock()
-            mock_manager.get_uptime.return_value = "0:01:23"
-            mock_get_manager.return_value = mock_manager
             mock_model_manager.get_uptime.return_value = "0:01:23"
             
             response = client.get("/health")

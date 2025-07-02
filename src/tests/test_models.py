@@ -725,25 +725,27 @@ class TestAPI:
         assert "model_loaded" in data
         assert "timestamp" in data
     
-    @patch('deployment.app.model_loaded', True)
-    @patch('deployment.app.model')
-    @patch('deployment.app.scaler')
-    def test_predict_endpoint_success(self, mock_scaler, mock_model, client, sample_customer_data):
+    def test_predict_endpoint_success(self, client, sample_customer_data):
         """Test successful prediction endpoint."""
-        # Mock model predictions
-        mock_model.predict_proba.return_value = np.array([[0.7, 0.3]])
-        mock_model.predict.return_value = np.array([0])
-        mock_scaler.transform.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-        
-        response = client.post("/predict", json=sample_customer_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert "churn_probability" in data
-        assert "churn_prediction" in data
-        assert "risk_level" in data
-        assert "confidence" in data
-        assert "timestamp" in data
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_single method
+            mock_model_manager.predict_single.return_value = {
+                'churn_probability': 0.3,
+                'churn_prediction': False,
+                'risk_level': 'Low',
+                'confidence': 0.7,
+                'threshold_used': 0.5
+            }
+            
+            response = client.post("/predict", json=sample_customer_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert "churn_probability" in data
+            assert "churn_prediction" in data
+            assert "risk_level" in data
+            assert "confidence" in data
+            assert "timestamp" in data
     
     def test_predict_endpoint_invalid_data(self, client):
         """Test prediction endpoint with invalid data."""
@@ -758,28 +760,37 @@ class TestAPI:
         response = client.post("/predict", json=invalid_data)
         assert response.status_code == 422  # Validation error
     
-    @patch('deployment.app.model_loaded', True)
-    @patch('deployment.app.model')
-    @patch('deployment.app.scaler')
-    def test_batch_predict_endpoint(self, mock_scaler, mock_model, client, sample_customer_data):
+    def test_batch_predict_endpoint(self, client, sample_customer_data):
         """Test batch prediction endpoint."""
-        # Mock model predictions
-        mock_model.predict_proba.return_value = np.array([[0.7, 0.3], [0.4, 0.6]])
-        mock_model.predict.return_value = np.array([0, 1])
-        mock_scaler.transform.return_value = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-        
-        batch_data = {
-            "customers": [sample_customer_data, sample_customer_data]
-        }
-        
-        response = client.post("/predict/batch", json=batch_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert "predictions" in data
-        assert "summary" in data
-        assert len(data["predictions"]) == 2
-        assert "total_customers" in data["summary"]
+        with patch('app.services.model_manager.model_manager') as mock_model_manager:
+            # Mock the model manager's predict_batch method
+            mock_model_manager.predict_batch.return_value = [
+                {
+                    'churn_probability': 0.3,
+                    'churn_prediction': False,
+                    'risk_level': 'Low',
+                    'confidence': 0.7
+                },
+                {
+                    'churn_probability': 0.6,
+                    'churn_prediction': True,
+                    'risk_level': 'High',
+                    'confidence': 0.4
+                }
+            ]
+            
+            batch_data = {
+                "customers": [sample_customer_data, sample_customer_data]
+            }
+            
+            response = client.post("/predict/batch", json=batch_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert "predictions" in data
+            assert "summary" in data
+            assert len(data["predictions"]) == 2
+            assert "total_customers" in data["summary"]
     
     def test_batch_predict_too_large(self, client, sample_customer_data):
         """Test batch prediction with too many customers."""

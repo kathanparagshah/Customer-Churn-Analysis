@@ -25,8 +25,22 @@ try:
     # Import the new modular FastAPI application
     from app.main import app
     
+    # Import model-related components for backward compatibility
+    from app.services.model_manager import (
+    ModelManager, get_model_manager, is_model_loaded, model_manager,
+    model, scaler, label_encoders, feature_names, model_metadata, model_loaded
+)
+    from app.models.schemas import (
+        CustomerData, BatchCustomerData, PredictionResponse, BatchPredictionResponse
+    )
+    
     # Re-export for backward compatibility
-    __all__ = ['app']
+    __all__ = [
+        'app', 'CustomerData', 'BatchCustomerData', 'PredictionResponse',
+        'BatchPredictionResponse', 'ModelManager', 'get_model_manager',
+        'is_model_loaded', 'model_manager', 'model', 'scaler', 'label_encoders', 
+        'feature_names', 'model_metadata', 'model_loaded'
+    ]
     
 except ImportError as e:
     print(f"Error importing new modular app: {e}")
