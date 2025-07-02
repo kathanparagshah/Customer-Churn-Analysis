@@ -26,8 +26,9 @@ class TestPredictEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict", json=sample_customer_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict", json=sample_customer_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -63,8 +64,9 @@ class TestPredictEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=False):
-                response = client.post("/predict", json=sample_customer_data)
+            # Set model as not loaded
+            mock_model_manager.is_loaded = False
+            response = client.post("/predict", json=sample_customer_data)
             
             assert response.status_code == 503
             data = response.json()
@@ -98,8 +100,9 @@ class TestPredictEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict", json=invalid_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict", json=invalid_data)
             
             assert response.status_code == 422  # Validation error
         finally:
@@ -123,8 +126,9 @@ class TestPredictEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict", json=sample_customer_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict", json=sample_customer_data)
             
             assert response.status_code == 500
             data = response.json()
@@ -185,8 +189,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict/batch", json=sample_batch_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict/batch", json=sample_batch_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -228,8 +233,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=False):
-                response = client.post("/predict/batch", json=sample_batch_data)
+            # Set model as not loaded
+            mock_model_manager.is_loaded = False
+            response = client.post("/predict/batch", json=sample_batch_data)
             
             assert response.status_code == 503
             data = response.json()
@@ -258,8 +264,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict/batch", json=empty_batch)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict/batch", json=empty_batch)
             
             assert response.status_code == 422  # Validation error for empty list
         finally:
@@ -289,8 +296,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict/batch", json=invalid_batch)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict/batch", json=invalid_batch)
             
             assert response.status_code == 422  # Validation error
         finally:
@@ -314,8 +322,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict/batch", json=sample_batch_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict/batch", json=sample_batch_data)
             
             assert response.status_code == 500
             data = response.json()
@@ -356,8 +365,9 @@ class TestPredictBatchEndpoint:
         app.dependency_overrides[get_model_manager] = lambda: mock_model_manager
         
         try:
-            with patch('app.routes.predict.is_model_loaded', return_value=True):
-                response = client.post("/predict", json=sample_customer_data)
+            # Set model as loaded
+            mock_model_manager.is_loaded = True
+            response = client.post("/predict", json=sample_customer_data)
             
             assert response.status_code == 200
             assert "application/json" in response.headers["content-type"]

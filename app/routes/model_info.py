@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..models.schemas import ModelInfoResponse
-from ..services.model_manager import get_model_manager, ModelManager, is_model_loaded
+from ..services.model_manager import get_model_manager, ModelManager
 from ..logging import get_logger
 
 logger = get_logger("model_info")

@@ -12,7 +12,7 @@ from ..models.schemas import (
     PredictionResponse, 
     BatchPredictionResponse
 )
-from ..services.model_manager import get_model_manager, ModelManager, is_model_loaded
+from ..services.model_manager import get_model_manager, ModelManager
 from ..services.analytics import log_prediction, log_batch_prediction
 from ..services.observability import (
     PREDICTION_COUNTER, 
@@ -47,7 +47,7 @@ async def predict_churn(
     Raises:
         HTTPException: If model is not loaded or prediction fails
     """
-    if not is_model_loaded():
+    if not model_manager.is_loaded:
         ERROR_COUNTER.inc()
         logger.warning("Prediction requested but model not loaded")
         raise HTTPException(
@@ -124,7 +124,7 @@ async def predict_batch_churn(
     Raises:
         HTTPException: If model is not loaded or prediction fails
     """
-    if not is_model_loaded():
+    if not model_manager.is_loaded:
         ERROR_COUNTER.inc()
         logger.warning("Batch prediction requested but model not loaded")
         raise HTTPException(
