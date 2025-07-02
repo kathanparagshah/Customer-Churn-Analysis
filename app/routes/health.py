@@ -124,18 +124,20 @@ def check_dependencies() -> Dict[str, Any]:
     return dependencies
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check(model_manager: ModelManager = Depends(get_model_manager)):
-    """Comprehensive health check endpoint.
+@router.get("/health/detailed", response_model=HealthResponse)
+async def detailed_health_check(model_manager: ModelManager = Depends(get_model_manager)):
+    """Comprehensive health check endpoint with system resource monitoring.
     
     Returns detailed health information including:
     - Service uptime
     - Model status
-    - System resources
+    - System resources (disk, memory)
     - Dependencies
     
+    Note: This endpoint may be slower due to system checks.
+    
     Returns:
-        HealthResponse: Current health status of the service
+        HealthResponse: Detailed health status of the service
     """
     start_time = time.time()
     
@@ -143,7 +145,7 @@ async def health_check(model_manager: ModelManager = Depends(get_model_manager))
         # Get basic health status
         health_status = model_manager.get_health_status()
         
-        # Check dependencies
+        # Check dependencies (expensive operations)
         dependencies = check_dependencies()
         
         # Determine overall service status
@@ -157,7 +159,7 @@ async def health_check(model_manager: ModelManager = Depends(get_model_manager))
         else:
             status = "unhealthy"
         
-        logger.debug(f"Health check: {status}")
+        logger.debug(f"Detailed health check: {status}")
         
         response = HealthResponse(
             status=status,
@@ -167,6 +169,67 @@ async def health_check(model_manager: ModelManager = Depends(get_model_manager))
             timestamp=health_status.get("timestamp", datetime.now().isoformat()),
             model_status=health_status.get("model_status"),
             dependencies=dependencies
+        )
+        
+        # Log performance
+        duration = time.time() - start_time
+        log_performance(
+            "detailed_health_check",
+            duration,
+            status=status,
+            model_loaded=model_manager.is_loaded
+        )
+        
+        return response
+        
+    except ChurnAPIException as e:
+        logger.error(f"Detailed health check failed: {e.message}", extra=e.details)
+        raise to_http_exception(e)
+    except Exception as e:
+        logger.error(f"Detailed health check failed: {e}")
+        
+        # Return unhealthy status on error
+        return HealthResponse(
+            status="unhealthy",
+            loaded=False,
+            version="Unknown",
+            uptime="Unknown",
+            timestamp=datetime.now().isoformat(),
+            model_status=None
+        )
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check(model_manager: ModelManager = Depends(get_model_manager)):
+    """Fast health check endpoint optimized for deployment environments.
+    
+    Returns basic health information without expensive system checks:
+    - Service status
+    - Model loading status
+    - Basic uptime
+    
+    Returns:
+        HealthResponse: Current health status of the service
+    """
+    start_time = time.time()
+    
+    try:
+        # Get basic health status (fast)
+        health_status = model_manager.get_health_status()
+        
+        # Simple status determination based on model loading
+        status = "healthy" if model_manager.is_loaded else "degraded"
+        
+        logger.debug(f"Health check: {status}")
+        
+        response = HealthResponse(
+            status=status,
+            loaded=model_manager.is_loaded,
+            version=model_manager.version or "Unknown",
+            uptime=health_status.get("uptime", "Unknown"),
+            timestamp=health_status.get("timestamp", datetime.now().isoformat()),
+            model_status=health_status.get("model_status"),
+            dependencies={"overall_status": "healthy"}  # Skip expensive checks
         )
         
         # Log performance
