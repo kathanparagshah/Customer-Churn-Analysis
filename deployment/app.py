@@ -338,10 +338,7 @@ class PredictionResponse(BaseModel):
     timestamp: datetime = Field(..., description="Prediction timestamp")
     version: str = Field(..., description="Model version used")
     
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
 
 
 class BatchPredictionResponse(BaseModel):
