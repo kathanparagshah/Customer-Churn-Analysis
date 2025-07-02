@@ -39,9 +39,9 @@ class TestAPIEndpoints:
     """Test API endpoints."""
     
     def test_predict_endpoint_success(self, client, valid_customer_data):
-        """Test successful prediction endpoint."""
+        """Test single prediction endpoint."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
@@ -120,7 +120,7 @@ class TestAPIEndpoints:
     def test_batch_predict_endpoint_success(self, client, valid_customer_data):
         """Test batch prediction endpoint."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_batch.return_value = [
@@ -161,7 +161,7 @@ class TestAPIEndpoints:
     def test_content_type_headers(self, client, valid_customer_data):
         """Test content type headers."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
@@ -183,7 +183,7 @@ class TestPerformanceAndLoad:
     def test_prediction_response_time(self, client, valid_customer_data):
         """Test prediction response time."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_single.return_value = {
@@ -206,7 +206,7 @@ class TestPerformanceAndLoad:
     def test_large_batch_performance(self, client, valid_customer_data):
         """Test large batch prediction performance."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             # Create large batch
@@ -232,7 +232,7 @@ class TestAPIEndpointsComprehensive:
     def test_batch_predict_endpoint_success_comprehensive(self, client, valid_customer_data):
         """Test batch prediction endpoint with comprehensive validation."""
         with patch('app.services.model_manager.get_model_manager') as mock_get_manager, \
-             patch('app.routes.predict.is_model_loaded') as mock_is_loaded:
+             patch('app.services.model_manager.is_model_loaded') as mock_is_loaded:
             # Create mock model manager
             mock_model_manager = Mock()
             mock_model_manager.predict_batch.return_value = [
