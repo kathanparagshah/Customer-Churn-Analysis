@@ -30,11 +30,24 @@ from packaging import version
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 import uvicorn
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
-from analytics_db import analytics_db
+try:
+    from analytics_db import analytics_db
+except ImportError:
+    # For testing environment, try different import paths
+    try:
+        from deployment.analytics_db import analytics_db
+    except ImportError:
+        # Create a mock analytics_db for testing
+        class MockAnalyticsDB:
+            def log_prediction(self, *args, **kwargs):
+                pass
+            def log_batch_prediction(self, *args, **kwargs):
+                pass
+        analytics_db = MockAnalyticsDB()
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / 'src'))
@@ -144,9 +157,23 @@ def is_model_loaded():
 
 
 class CustomerData(BaseModel):
-    """
-    Pydantic model for customer data input with enhanced validation.
-    """
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "CreditScore": 650,
+                "Geography": "France",
+                "Gender": "Female",
+                "Age": 35,
+                "Tenure": 5,
+                "Balance": 50000.0,
+                "NumOfProducts": 2,
+                "HasCrCard": 1,
+                "IsActiveMember": 1,
+                "EstimatedSalary": 75000.0
+            }
+        }
+    )
+    
     CreditScore: int = Field(
         ..., 
         description="Customer credit score (300-850)",
@@ -198,25 +225,29 @@ class CustomerData(BaseModel):
         example=75000.0
     )
     
-    @validator('Geography')
+    @field_validator('Geography')
+    @classmethod
     def validate_geography(cls, v):
         if v not in ['France', 'Spain', 'Germany']:
             raise ValueError('Geography must be one of: France, Spain, Germany')
         return v
 
-    @validator('Gender')
+    @field_validator('Gender')
+    @classmethod
     def validate_gender(cls, v):
         if v not in ['Male', 'Female']:
             raise ValueError('Gender must be either Male or Female')
         return v
 
-    @validator('CreditScore')
+    @field_validator('CreditScore')
+    @classmethod
     def validate_credit_score(cls, v):
         if not 300 <= v <= 850:
             raise ValueError('Credit score must be between 300 and 850')
         return v
     
-    @validator('Age')
+    @field_validator('Age')
+    @classmethod
     def validate_age(cls, v):
         if not isinstance(v, int):
             raise ValueError('Age must be an integer')
@@ -224,7 +255,8 @@ class CustomerData(BaseModel):
             raise ValueError('Age must be between 18 and 100')
         return v
     
-    @validator('Balance')
+    @field_validator('Balance')
+    @classmethod
     def validate_balance(cls, v):
         if not isinstance(v, (int, float)):
             raise ValueError('Balance must be a number')
@@ -234,7 +266,8 @@ class CustomerData(BaseModel):
             raise ValueError(f'Balance cannot exceed 1,000,000, got: {v}')
         return float(v)
     
-    @validator('EstimatedSalary')
+    @field_validator('EstimatedSalary')
+    @classmethod
     def validate_estimated_salary(cls, v):
         if not isinstance(v, (int, float)):
             raise ValueError('EstimatedSalary must be a number')
@@ -244,7 +277,8 @@ class CustomerData(BaseModel):
             raise ValueError(f'EstimatedSalary cannot exceed 500,000, got: {v}')
         return float(v)
     
-    @validator('Tenure')
+    @field_validator('Tenure')
+    @classmethod
     def validate_tenure(cls, v):
         if not isinstance(v, int):
             raise ValueError('Tenure must be an integer')
@@ -252,7 +286,8 @@ class CustomerData(BaseModel):
             raise ValueError('Tenure must be between 0 and 10')
         return v
     
-    @validator('NumOfProducts')
+    @field_validator('NumOfProducts')
+    @classmethod
     def validate_num_products(cls, v):
         if not isinstance(v, int):
             raise ValueError('NumOfProducts must be an integer')
@@ -260,33 +295,19 @@ class CustomerData(BaseModel):
             raise ValueError('Number of products must be between 1 and 4')
         return v
     
-    @validator('HasCrCard')
+    @field_validator('HasCrCard')
+    @classmethod
     def validate_has_cr_card(cls, v):
         if not isinstance(v, int) or v not in [0, 1]:
             raise ValueError('HasCrCard must be 0 or 1')
         return v
     
-    @validator('IsActiveMember')
+    @field_validator('IsActiveMember')
+    @classmethod
     def validate_is_active_member(cls, v):
         if not isinstance(v, int) or v not in [0, 1]:
             raise ValueError('IsActiveMember must be 0 or 1')
         return v
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "CreditScore": 650,
-                "Geography": "France",
-                "Gender": "Female",
-                "Age": 35,
-                "Tenure": 5,
-                "Balance": 50000.0,
-                "NumOfProducts": 2,
-                "HasCrCard": 1,
-                "IsActiveMember": 1,
-                "EstimatedSalary": 75000.0
-            }
-        }
 
 
 class BatchCustomerData(BaseModel):
@@ -295,7 +316,8 @@ class BatchCustomerData(BaseModel):
     """
     customers: List[CustomerData] = Field(..., description="List of customer data")
     
-    @validator('customers')
+    @field_validator('customers')
+    @classmethod
     def validate_batch_size(cls, v):
         if len(v) > 1000:  # Limit batch size
             raise ValueError('Batch size cannot exceed 1000 customers')
@@ -303,9 +325,12 @@ class BatchCustomerData(BaseModel):
 
 
 class PredictionResponse(BaseModel):
-    """
-    Pydantic model for prediction response.
-    """
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+    
     churn_probability: float = Field(..., description="Probability of customer churn (0-1)")
     churn_prediction: bool = Field(..., description="Binary churn prediction")
     risk_level: str = Field(..., description="Risk level (Low, Medium, High)")
@@ -320,9 +345,12 @@ class PredictionResponse(BaseModel):
 
 
 class BatchPredictionResponse(BaseModel):
-    """
-    Pydantic model for batch prediction response.
-    """
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+    
     predictions: List[PredictionResponse] = Field(..., description="List of predictions")
     summary: Dict[str, Any] = Field(..., description="Batch prediction summary")
 
@@ -331,17 +359,18 @@ class HealthResponse(BaseModel):
     """
     Pydantic model for health check response.
     """
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+    
     status: str = Field(..., description="Service status")
     loaded: bool = Field(..., description="Whether model is loaded")
     version: str = Field(..., description="Current model version")
     uptime: str = Field(..., description="Service uptime")
     timestamp: datetime = Field(..., description="Health check timestamp")
     model_status: Dict[str, Any] = Field(..., description="Model status information")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
 
 
 class ModelManager:
