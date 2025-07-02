@@ -1,0 +1,47 @@
+[
+  {
+    "customer": "High Risk Churner",
+    "expected": "High churn probability",
+    "churn_probability": 0.0,
+    "churn_prediction": false,
+    "risk_level": "Low",
+    "confidence": 1.0,
+    "assessment": "Incorrect"
+  },
+  {
+    "customer": "Low Risk Customer",
+    "expected": "Low churn probability",
+    "churn_probability": 0.0,
+    "churn_prediction": false,
+    "risk_level": "Low",
+    "confidence": 1.0,
+    "assessment": "Correct"
+  },
+  {
+    "customer": "Medium Risk Customer",
+    "expected": "Medium churn probability",
+    "churn_probability": 0.0,
+    "churn_prediction": false,
+    "risk_level": "Low",
+    "confidence": 1.0,
+    "assessment": "Incorrect"
+  },
+  {
+    "customer": "Extreme Churner Profile",
+    "expected": "Very high churn probability",
+    "churn_probability": 0.0,
+    "churn_prediction": false,
+    "risk_level": "Low",
+    "confidence": 1.0,
+    "assessment": "Incorrect"
+  },
+  {
+    "customer": "Loyal Customer Profile",
+    "expected": "Very low churn probability",
+    "churn_probability": 0.0,
+    "churn_prediction": false,
+    "risk_level": "Low",
+    "confidence": 1.0,
+    "assessment": "Correct"
+  }
+]

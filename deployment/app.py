@@ -1138,6 +1138,21 @@ async def log_batch_prediction(batch_size: int, summary: Dict[str, Any]):
     analytics_db.log_batch_prediction(log_entry)
 
 
+@app.post("/auth/google")
+async def google_auth_stub():
+    """
+    Stub endpoint for Google OAuth authentication.
+    This endpoint is not yet implemented but returns a placeholder response.
+    
+    Returns:
+        Dict: Placeholder response indicating the endpoint is a stub
+    """
+    return {
+        "message": "Google auth endpoint stub – not yet implemented",
+        "timestamp": datetime.now().isoformat()
+    }
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """

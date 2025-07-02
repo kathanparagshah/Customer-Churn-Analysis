@@ -20,4 +20,4 @@ services:
     autoDeploy: true
     # Custom domain (optional)
     # domains:
-    #   - api.customer-churn-demo.com
+    #   - customer-churn-api-omgg.onrender.com

@@ -60,7 +60,7 @@ A comprehensive Streamlit web application for predicting customer churn using ma
 
 ### API Endpoints
 The dashboard automatically tries to connect to:
-1. **Production API:** `https://api.customer-churn-demo.com`
+1. **Production API:** `https://customer-churn-api-omgg.onrender.com`
 2. **Local API (fallback):** `http://localhost:8000`
 
 To use a different API endpoint, modify the `API_BASE_URL` constant in `streamlit_dashboard.py`:

@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "deploy": "vercel --prod",
     "dev:local": "cp .env.example .env.local && vite",
-    "build:prod": "VITE_API_BASE_URL=https://api.customer-churn-demo.com vite build"
+    "build:prod": "VITE_API_BASE_URL=https://customer-churn-api-omgg.onrender.com vite build"
   },
   "homepage": ".",
   "dependencies": {

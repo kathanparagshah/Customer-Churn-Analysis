@@ -63,7 +63,7 @@ This guide provides step-by-step instructions for deploying the Customer Churn A
    - **Plan**: Starter (free tier available)
 
 5. **Custom Domain (Optional)**
-   - Add custom domain: `api.customer-churn-demo.com`
+   - Add custom domain: `customer-churn-api-omgg.onrender.com`
    - Configure DNS records as instructed
 
 ### Option 2: Deploy to Heroku
@@ -228,7 +228,7 @@ This guide provides step-by-step instructions for deploying the Customer Churn A
 
 | Variable | Description | Example | Required |
 |----------|-------------|---------|----------|
-| `VITE_API_BASE_URL` | Backend API URL | https://api.customer-churn-demo.com | Yes |
+| `VITE_API_BASE_URL` | Backend API URL | https://customer-churn-api-omgg.onrender.com | Yes |
 
 ## Verification
 

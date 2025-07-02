@@ -63,7 +63,7 @@ Currently, the frontend uses mock data for predictions. This guide shows how to:
 
 4. **Add the following environment variable**:
    - **Name**: `VITE_API_BASE_URL`
-   - **Value**: Your deployed backend URL (e.g., `https://your-app.onrender.com`)
+   - **Value**: Your deployed backend URL (e.g., `https://customer-churn-api-omgg.onrender.com`)
    - **Environment**: Production (and Preview if you want)
 
 5. **Save the changes**
@@ -130,6 +130,7 @@ Your deployed backend provides these endpoints:
 1. **CORS Errors**:
    - Ensure your Vercel domain is added to CORS origins in `deployment/app.py`
    - Current CORS settings include: `https://customer-churn-analysis-kgz3.vercel.app`
+   - Backend URL: `https://customer-churn-api-omgg.onrender.com`
 
 2. **Environment Variable Not Working**:
    - Verify `VITE_API_BASE_URL` is set in Vercel

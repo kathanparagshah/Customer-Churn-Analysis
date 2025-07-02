@@ -110,7 +110,7 @@ jobs:
       if: always()
       run: |
         if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Backend deployed successfully to https://api.customer-churn-demo.com"
+          echo "✅ Backend deployed successfully to https://customer-churn-api-omgg.onrender.com"
         else
           echo "❌ Backend deployment failed"
         fi

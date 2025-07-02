@@ -540,7 +540,7 @@ The FastAPI backend is configured with CORS middleware to allow requests from:
 2. **Environment Variables in Vercel**:
    - Go to your Vercel project dashboard
    - Navigate to Settings → Environment Variables
-   - Add: `VITE_API_BASE_URL` = `https://api.customer-churn-demo.com`
+   - Add: `VITE_API_BASE_URL` = `https://customer-churn-api-omgg.onrender.com`
    - Redeploy the project
 
 3. **Automatic Deployment**:
@@ -583,13 +583,13 @@ The project includes GitHub Actions workflows for automated deployment:
 #### Frontend
 - `VITE_API_BASE_URL`: Backend API URL
   - Local: `http://localhost:8000`
-  - Production: `https://api.customer-churn-demo.com`
+  - Production: `https://customer-churn-api-omgg.onrender.com`
 
 ### Verification Steps
 
 1. **Backend Health Check**:
    ```bash
-   curl https://api.customer-churn-demo.com/health
+   curl https://customer-churn-api-omgg.onrender.com/health
    ```
 
 2. **Frontend Functionality**:
@@ -599,7 +599,7 @@ The project includes GitHub Actions workflows for automated deployment:
 
 3. **End-to-End Test**:
    ```bash
-   curl -X POST https://api.customer-churn-demo.com/predict/batch \
+   curl -X POST https://customer-churn-api-omgg.onrender.com/predict/batch \
      -H "Content-Type: application/json" \
      -d '{"customers": [{"CreditScore": 650, "Geography": "France", "Gender": "Female", "Age": 35, "Tenure": 5, "Balance": 50000, "NumOfProducts": 2, "HasCrCard": 1, "IsActiveMember": 1, "EstimatedSalary": 75000}]}'
    ```

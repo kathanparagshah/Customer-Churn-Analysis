@@ -31,7 +31,7 @@ st.set_page_config(
 )
 
 # Configuration
-API_BASE_URL = "https://api.customer-churn-demo.com"
+API_BASE_URL = "https://customer-churn-api-omgg.onrender.com"
 LOCAL_API_URL = "http://localhost:8000"
 
 # Custom CSS for professional styling

@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 FRONTEND_URL="https://customer-churn-analysis-kgz3.vercel.app"
-BACKEND_URL="https://api.customer-churn-demo.com"
+BACKEND_URL="https://customer-churn-api-omgg.onrender.com"
 LOCAL_FRONTEND="http://localhost:3000"
 LOCAL_BACKEND="http://localhost:8000"
 
