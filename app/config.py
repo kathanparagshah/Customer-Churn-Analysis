@@ -9,7 +9,7 @@ This module provides centralized configuration management with support for:
 
 import os
 from pathlib import Path
-from pydantic import Field, validator
+from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from typing import List, Optional, Dict, Any
 from enum import Enum
@@ -116,7 +116,8 @@ class AppSettings(BaseSettings):
     MAX_REQUEST_SIZE: int = Field(10 * 1024 * 1024, description="Max request size in bytes")
     WORKERS: int = Field(1, description="Number of worker processes")
     
-    @validator('ENVIRONMENT', pre=True)
+    @field_validator('ENVIRONMENT', mode='before')
+    @classmethod
     def validate_environment(cls, v):
         """Validate environment value."""
         if isinstance(v, str):
@@ -142,17 +143,19 @@ class AppSettings(BaseSettings):
                 return Environment.DEVELOPMENT
         return v
     
-    @validator('LOG_LEVEL', pre=True)
+    @field_validator('LOG_LEVEL', mode='before')
+    @classmethod
     def validate_log_level(cls, v):
         """Validate log level value."""
         if isinstance(v, str):
             return LogLevel(v.upper())
         return v
     
-    @validator('DEBUG')
-    def validate_debug_mode(cls, v, values):
+    @field_validator('DEBUG')
+    @classmethod
+    def validate_debug_mode(cls, v, info):
         """Auto-enable debug in development."""
-        if values.get('ENVIRONMENT') == Environment.DEVELOPMENT:
+        if info.data.get('ENVIRONMENT') == Environment.DEVELOPMENT:
             return True
         return v
     
@@ -192,11 +195,12 @@ class AppSettings(BaseSettings):
             "allow_credentials": True
         }
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        validate_assignment=True
+    )
 
 
 # Global settings instance

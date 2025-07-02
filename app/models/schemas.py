@@ -2,14 +2,14 @@
 
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class CustomerData(BaseModel):
     """Pydantic model for customer data input."""
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "CreditScore": 650,
                 "Geography": "France",
@@ -23,113 +23,124 @@ class CustomerData(BaseModel):
                 "EstimatedSalary": 75000.0
             }
         }
+    )
     
     CreditScore: int = Field(
         ..., 
         description="Customer credit score (300-850)",
-        example=650
+        json_schema_extra={"example": 650}
     )
     Geography: str = Field(
         ..., 
         description="Customer geography (France, Germany, Spain)",
-        example="France"
+        json_schema_extra={"example": "France"}
     )
     Gender: str = Field(
         ..., 
         description="Customer gender (Male, Female)",
-        example="Female"
+        json_schema_extra={"example": "Female"}
     )
     Age: int = Field(
         ..., 
         description="Customer age (18-100)",
-        example=35
+        json_schema_extra={"example": 35}
     )
     Tenure: int = Field(
         ..., 
         description="Number of years as customer (0-10)",
-        example=5
+        json_schema_extra={"example": 5}
     )
     Balance: float = Field(
         ..., 
         description="Account balance",
-        example=50000.0
+        json_schema_extra={"example": 50000.0}
     )
     NumOfProducts: int = Field(
         ..., 
         description="Number of products (1-4)",
-        example=2
+        json_schema_extra={"example": 2}
     )
     HasCrCard: int = Field(
         ..., 
         description="Has credit card (0 or 1)",
-        example=1
+        json_schema_extra={"example": 1}
     )
     IsActiveMember: int = Field(
         ..., 
         description="Is active member (0 or 1)",
-        example=1
+        json_schema_extra={"example": 1}
     )
     EstimatedSalary: float = Field(
         ..., 
         description="Estimated salary",
-        example=75000.0
+        json_schema_extra={"example": 75000.0}
     )
     
-    @validator('CreditScore')
+    @field_validator('CreditScore')
+    @classmethod
     def validate_credit_score(cls, v):
         if not 300 <= v <= 850:
             raise ValueError('Credit score must be between 300 and 850')
         return v
     
-    @validator('Age')
+    @field_validator('Age')
+    @classmethod
     def validate_age(cls, v):
         if not 18 <= v <= 100:
             raise ValueError('Age must be between 18 and 100')
         return v
     
-    @validator('Geography')
+    @field_validator('Geography')
+    @classmethod
     def validate_geography(cls, v):
         if v not in ['France', 'Germany', 'Spain']:
             raise ValueError('Geography must be one of: France, Germany, Spain')
         return v
     
-    @validator('Gender')
+    @field_validator('Gender')
+    @classmethod
     def validate_gender(cls, v):
         if v not in ['Male', 'Female']:
             raise ValueError('Gender must be either Male or Female')
         return v
     
-    @validator('HasCrCard')
+    @field_validator('HasCrCard')
+    @classmethod
     def validate_has_cr_card(cls, v):
         if v not in [0, 1]:
             raise ValueError('HasCrCard must be 0 or 1')
         return v
     
-    @validator('IsActiveMember')
+    @field_validator('IsActiveMember')
+    @classmethod
     def validate_is_active_member(cls, v):
         if v not in [0, 1]:
             raise ValueError('IsActiveMember must be 0 or 1')
         return v
     
-    @validator('NumOfProducts')
+    @field_validator('NumOfProducts')
+    @classmethod
     def validate_num_products(cls, v):
         if not 1 <= v <= 4:
             raise ValueError('Number of products must be between 1 and 4')
         return v
     
-    @validator('Tenure')
+    @field_validator('Tenure')
+    @classmethod
     def validate_tenure(cls, v):
         if not 0 <= v <= 10:
             raise ValueError('Tenure must be between 0 and 10')
         return v
     
-    @validator('Balance')
+    @field_validator('Balance')
+    @classmethod
     def validate_balance(cls, v):
         if v < 0:
             raise ValueError('Balance must be non-negative')
         return v
     
-    @validator('EstimatedSalary')
+    @field_validator('EstimatedSalary')
+    @classmethod
     def validate_estimated_salary(cls, v):
         if v <= 0:
             raise ValueError('Estimated salary must be positive')
@@ -141,7 +152,8 @@ class BatchCustomerData(BaseModel):
     
     customers: List[CustomerData] = Field(..., description="List of customer data")
     
-    @validator('customers')
+    @field_validator('customers')
+    @classmethod
     def validate_batch_size(cls, v):
         if len(v) == 0:
             raise ValueError('Batch must contain at least one customer')
@@ -153,10 +165,11 @@ class BatchCustomerData(BaseModel):
 class PredictionResponse(BaseModel):
     """Pydantic model for prediction response."""
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
     
     churn_probability: float = Field(..., description="Probability of customer churn (0-1)")
     churn_prediction: bool = Field(..., description="Binary churn prediction")
@@ -169,10 +182,11 @@ class PredictionResponse(BaseModel):
 class BatchPredictionResponse(BaseModel):
     """Pydantic model for batch prediction response."""
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
     
     batch_id: str = Field(..., description="Unique batch identifier")
     predictions: List[PredictionResponse] = Field(..., description="List of predictions")
@@ -184,10 +198,11 @@ class BatchPredictionResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Pydantic model for health check response."""
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
     
     status: str = Field(..., description="Service status")
     loaded: bool = Field(..., description="Whether model is loaded")
@@ -201,10 +216,11 @@ class HealthResponse(BaseModel):
 class ModelInfoResponse(BaseModel):
     """Pydantic model for model info response."""
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
     
     model_name: Optional[str] = Field(None, description="Model name")
     version: Optional[str] = Field(None, description="Model version")
